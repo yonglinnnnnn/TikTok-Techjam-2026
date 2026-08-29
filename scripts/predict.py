@@ -2,8 +2,8 @@ import argparse
 import json
 from pathlib import Path
 
-from src.pipeline import run_pipeline
-from src.utils import ALLOWED_EXTENSIONS
+from src.truesight.pipeline import run_pipeline
+from src.truesight.utils import ALLOWED_EXTENSIONS
 
 
 def main() -> None:

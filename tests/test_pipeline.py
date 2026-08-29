@@ -1,7 +1,7 @@
 import unittest
 from pathlib import Path
 
-from src.pipeline import TrueSightResult, run_pipeline
+from src.truesight.pipeline import TrueSightResult, run_pipeline
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 SAMPLE_IMAGE = PROJECT_ROOT / "data" / "samples" / "image_1.jpg"
