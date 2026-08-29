@@ -1,0 +1,50 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# --- Env / secrets ---
+.env
+*.env.local
+**/secrets.*
+
+# --- Datasets, models, generated outputs (never commit these) ---
+data/raw/*
+data/processed/*
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+models/*.pt
+models/*.pth
+models/*.ckpt
+models/*.onnx
+outputs/predictions/*
+outputs/metrics/*
+outputs/heatmaps/*
+outputs/figures/*
+!outputs/**/.gitkeep
+
+# --- Notebooks ---
+.ipynb_checkpoints/
+
+# --- OS / editor ---
+.DS_Store
+Thumbs.db
+.idea/
+*.swp
+
+# --- VS Code (keep shared config, ignore personal overrides) ---
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+!.vscode/launch.json
+
+# --- Docker ---
+*.log
