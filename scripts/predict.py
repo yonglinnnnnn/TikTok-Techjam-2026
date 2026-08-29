@@ -3,8 +3,7 @@ import json
 from pathlib import Path
 
 from src.pipeline import run_pipeline
-
-IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp"}
+from src.utils import ALLOWED_EXTENSIONS
 
 
 def main() -> None:
@@ -44,7 +43,10 @@ def main() -> None:
     for image_path in sorted(input_dir.iterdir()):
 
         # Skip non-image files
-        if not image_path.is_file() or image_path.suffix.lower() not in IMAGE_EXTENSIONS:
+        if (
+            not image_path.is_file()
+            or image_path.suffix.lower() not in ALLOWED_EXTENSIONS
+        ):
             continue
 
         result = run_pipeline(

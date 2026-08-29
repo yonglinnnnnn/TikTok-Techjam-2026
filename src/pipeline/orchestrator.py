@@ -5,10 +5,15 @@ from .result_schema import (
     VLMResult,
 )
 
+from ..utils import validate_image
+
 
 def run_pipeline(image_path: str) -> TrueSightResult:
+    validate_image(image_path)
+
     # Placeholder for actual pipeline logic
-    # In a real implementation, this function would run the image through various models and return the results.
+    # In a real implementation, this function would run the image through
+    # various models and return the results.
     
     # Example dummy results for demonstration purposes
     # Fake Tier 1 result
