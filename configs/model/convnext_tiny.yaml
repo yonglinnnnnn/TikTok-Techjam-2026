@@ -1,0 +1,49 @@
+seed: 42
+
+model:
+  name: convnext_tiny
+  pretrained: true
+  num_classes: 1
+  dropout: 0.15
+  unfreeze_stages: 2
+  target_image_size: 224
+
+training:
+  epochs: 12
+  warmup_epochs: 2
+  batch_size: 32
+  num_workers: 2
+  pin_memory: true
+  persistent_workers: true
+  backbone_lr: 0.00001
+  head_lr: 0.0002
+  weight_decay: 0.0001
+  label_smoothing: 0.0
+  grad_clip_norm: 1.0
+  amp: true
+  early_stopping_patience: 4
+  consistency_weight: 0.05
+  use_consistency_view: true
+
+augmentation:
+  jpeg_quality: [30, 90]
+  blur_sigma: [0.5, 2.0]
+  downscale: [0.25, 0.5]
+  noise_std: [0.02, 0.10]
+  color_jitter: [0.8, 1.2]
+  crop_scale: [0.8, 1.0]
+  p_jpeg: 0.45
+  p_blur: 0.25
+  p_downscale: 0.30
+  p_noise: 0.20
+  p_color: 0.35
+  p_crop: 0.35
+  p_horizontal_flip: 0.5
+
+scheduler:
+  name: cosine
+  min_lr_ratio: 0.05
+
+output:
+  save_last: true
+  save_best: true
