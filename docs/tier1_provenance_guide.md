@@ -1,8 +1,6 @@
 # Tier 1 provenance implementation guide
 
-## 1. Install
-
-Use Python 3.10 or newer from the repository root. On Windows PowerShell:
+## Installation
 
 ```powershell
 py -3.11 -m venv .venv
@@ -11,80 +9,82 @@ python -m pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
-If PowerShell blocks activation, use `.venv\Scripts\python.exe` in place of
-`python`; changing the machine execution policy is not required.
+The local C2PA and forensic checks work without an API key. To enable OpenAI's
+image provenance check, set the key in the process environment:
 
-## 2. Run Tier 1
+```powershell
+$env:OPENAI_API_KEY = "your-key"
+```
+
+The official endpoint checks supported OpenAI image signals and can return both
+C2PA and image SynthID results:
+https://developers.openai.com/api/reference/python/resources/content_provenance_checks/methods/create
+
+The removed `synthid-text` package is not used. No separate key-dependent
+watermark provider is registered.
+
+## Running
 
 ```powershell
 $env:PYTHONPATH = "src"
-python -m truesight.provenance.tier1 data/samples/example.jpg
+python -m truesight.provenance.tier1 data/image.jpg
 ```
 
-`c2pa_checker.py` reads the JUMBF manifest store, extracts the active provenance
-chain and asks the SDK for its validation state. `Trusted` means valid plus a
-trusted active signer; `Valid` alone is deliberately not treated as verified.
+Useful flags:
 
-`metadata_checker.py` reads EXIF/XMP/software strings. These strings are easy to
-forge, so they contribute only a `0.30` severity weight. An unverified C2PA store
-contributes `0.35`. A trusted, AI-attributed C2PA store contributes `0.98` and can
-quick-exit. Tune these provisional weights against a labelled validation set,
-then calibrate the final fused score (isotonic regression or Platt scaling are
-reasonable choices). Do not add the weights together: correlated provenance
-signals would inflate confidence.
-
-The aggregator uses `null` for fields Tier 1 cannot know. Tier 2/3 should update
-the same object rather than creating a different payload. In particular,
-`ai_coverage` and `heatmap_path` remain null until the classifier/Grad-CAM stage.
-
-## 3. Watermark and vendor checks
-
-Vendor-specific image watermark checks should be added only when the team has an
-official detector/API and any required detection key.
-
-Meta Stable Signature is not a generic marker. Detection requires Meta's TorchScript
-extractor and the exact bit key used to watermark the model. Its research repo was
-built with an older PyTorch/CUDA stack and most of it is non-commercially licensed,
-so isolate it in a separate environment/service and review the licence before use.
-Run its documented bit-accuracy evaluation with your extractor and key, calibrate
-a threshold on known positive and negative images, and expose only a small adapter:
-
-```python
-def check_stable_signature(path: str) -> dict:
-    bit_accuracy = detector_score(path)  # your licensed model/key implementation
-    return {
-        "checked": True,
-        "present": bit_accuracy >= CALIBRATED_THRESHOLD,
-        "verified": bit_accuracy >= CALIBRATED_THRESHOLD,
-        "source": "Meta Stable Signature",
-        "score": bit_accuracy,
-    }
+```text
+--skip-openai-provenance   Avoid the remote provider check
+--skip-forensics           Run provenance only
+--debug-provenance         Include raw manifest/validation/metadata diagnostics
+--debug-forensics          Include individual forensic maps and thresholds
+--calibration PATH         Load a fitted severity calibration artifact
 ```
 
-Never search image bytes for vendor names and call that a binary watermark. Byte
-inspection is useful only for locating metadata/container segments; cryptographic
-verification and pixel watermark extraction require their respective verifier.
+Always run Tier 1 on the untouched uploaded bytes. Any RGB conversion, EXIF
+orientation, resize, or recompression must produce a separate file for Tier 2/3.
 
-## 4. Manual verification checklist
+## C2PA result
 
-1. **Plain negative:** use a camera/handmade JPEG with no credentials. Expect
-   `is_ai_generated: null`, confidence `0`, and `requires_tier2: true`.
-2. **Verified positive:** download an original OpenAI-generated image without
-   screenshotting or re-saving it. Check it in the vendor verifier, then run the
-   CLI. Expect C2PA present, ideally `Trusted`, an OpenAI/DALL-E source, and quick
-   exit. Trust stores can affect whether the state is `Valid` or `Trusted`.
-3. **Stripped copy:** re-save or screenshot that image. Expect provenance to be
-   absent and escalation to Tier 2. This confirms that absence is not classified
-   as authentic.
-4. **Tampered copy:** modify bytes/pixels while retaining the manifest. Expect an
-   invalid/unverified state and no quick exit.
-5. **Forged metadata:** write `Software=OpenAI` into an ordinary image. Expect only
-   weak metadata evidence, `is_ai_generated: null`, and no quick exit.
-6. **Bad input:** pass a missing path (clear `FileNotFoundError`) and a text file
-   renamed `.jpg` (provenance/metadata errors, never a positive verdict). Input
-   MIME/dimension/size validation should eventually run before this module.
-7. Record output and wall-clock time for a folder of labelled samples. Compare
-   false positives and false negatives by signal type before changing weights.
+`provenance.c2pa.history.chain` contains:
 
-For each manual case, validate that the top-level keys stay identical. Downstream
-tiers may replace nulls and append evidence, but should not remove or rename keys.
+- the active/root manifest;
+- one node per reachable manifest, plus disconnected nodes for audit;
+- ingredient edges with relationship and title;
+- missing references and cycles;
+- unsigned ingredient count;
+- an oldest-to-active declared-action timeline.
+
+`content_edited` and `transformed` describe signed, declared actions. Their being
+false does not prove that no undeclared edit ever occurred.
+
+## Severity calibration
+
+Create a CSV with these columns:
+
+```text
+verified_ai_credential,provider_watermark,unverified_ai_credential,metadata_ai_marker,label
+```
+
+Use labelled development data that was not used to train the ConvNeXt model:
+
+```powershell
+python scripts/calibrate_provenance.py data/provenance_calibration.csv configs/provenance_calibration.json
+$env:TRUESIGHT_PROVENANCE_CALIBRATION = "configs/provenance_calibration.json"
+```
+
+At least 30 rows and both classes are required. The script fits a balanced
+logistic model and records training metrics. Evaluate it on a held-out set before
+calling it deployment-calibrated. Without an artifact, the output explicitly says
+`method: policy_v1` and `calibrated: false`.
+
+## Manual verification cases
+
+1. Plain camera JPEG: no positive provenance; continue to Tier 2.
+2. Original supported OpenAI image: retain original bytes; inspect separate C2PA
+   and SynthID signals.
+3. Re-saved OpenAI image: missing signals remain inconclusive.
+4. Trusted C2PA AI asset: verified AI signal; fast path allowed.
+5. Trusted digital-capture asset: record capture claim but continue downstream.
+6. Tampered signed asset: invalid credential; continue downstream.
+7. Forged `Software=OpenAI` EXIF: weak unverified metadata only.
+8. No API key: OpenAI provider status `unavailable`, not `not_detected`.
