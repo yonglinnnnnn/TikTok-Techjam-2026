@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ProvenanceResult",
+  "type": "object",
+  "required": ["status", "conclusion", "signals", "file", "c2pa", "metadata"],
+  "properties": {
+    "status": {"enum": ["verified_ai", "verified_capture", "ai_indicated", "no_provenance_found", "error"]},
+    "conclusion": {"type": "string"},
+    "signals": {"type": "array", "items": {"type": "object"}},
+    "file": {"type": "object"},
+    "c2pa": {"type": ["object", "null"]},
+    "metadata": {"type": "object"}
+  },
+  "additionalProperties": false
+}
