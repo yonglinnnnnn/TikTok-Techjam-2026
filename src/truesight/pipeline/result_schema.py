@@ -26,7 +26,7 @@ def default_severity_calibration() -> dict[str, Any]:
 
 def default_provenance() -> dict[str, Any]:
     return {
-        "status": "no_checked",
+        "status": "not_checked",
         "conclusion": "Provenance checks have not completed",
         "signals": [],
         "file": {

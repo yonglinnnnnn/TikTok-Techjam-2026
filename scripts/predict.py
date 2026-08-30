@@ -1,69 +1,56 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
 import argparse
 import json
+import sys
 from pathlib import Path
 
-from src.truesight.pipeline import run_pipeline
-from src.truesight.utils import ALLOWED_EXTENSIONS
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(PROJECT_ROOT / "src"))
+
+from truesight.pipeline import run_pipeline
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Run the TrueSight pipeline on one image.",
+    )
+    parser.add_argument(
+        "--input",
+        required=True,
+        type=Path,
+        dest="input_path",
+        help="Path to the image to analyze.",
+    )
+    parser.add_argument(
+        "--output",
+        type=Path,
+        help="Optional path at which to save the unified JSON result.",
+    )
+    return parser.parse_args()
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(
-        description="Run TrueSight on a directory of images."
+    args = parse_args()
+
+    try:
+        result = run_pipeline(str(args.input_path))
+    except (FileNotFoundError, ValueError) as exc:
+        raise SystemExit(f"TrueSight prediction failed: {exc}") from exc
+
+    json_result = json.dumps(
+        result.to_dict(),
+        indent=2,
+        ensure_ascii=False,
     )
 
-    parser.add_argument(
-        "--input_dir",
-        required=True,
-        help="Path to directory containing images"
-    )
+    if args.output is not None:
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.write_text(f"{json_result}\n", encoding="utf-8")
+        print(f"Saved prediction to: {args.output}", file=sys.stderr)
 
-    parser.add_argument(
-        "--output",
-        default="predictions.json",
-        help="Path to output JSON file"
-    )
-
-    args = parser.parse_args()
-
-    input_dir = Path(args.input_dir)
-    output_path = Path(args.output)
-
-    # Check input folder exists
-    if not input_dir.is_dir():
-        raise NotADirectoryError(f"Input directory does not exist: {input_dir}")
-
-    # Make output folder if needed
-    output_path.parent.mkdir(
-        parents=True,
-        exist_ok=True
-    )
-
-    predictions = []
-
-    for image_path in sorted(input_dir.iterdir()):
-
-        # Skip non-image files
-        if (
-            not image_path.is_file()
-            or image_path.suffix.lower() not in ALLOWED_EXTENSIONS
-        ):
-            continue
-
-        result = run_pipeline(
-            str(image_path)
-        )
-
-        predictions.append({
-            "image_path": str(image_path),
-            "pred": result.final_confidence
-        })
-
-    with output_path.open("w", encoding="utf-8") as f:
-        json.dump(predictions, f, indent=2)
-
-    print(f"Processed {len(predictions)} images.")
-
-    print(f"Saved predictions to: {output_path}")
+    print(json_result)
 
 
 if __name__ == "__main__":
