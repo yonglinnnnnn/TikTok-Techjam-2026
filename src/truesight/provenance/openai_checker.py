@@ -6,9 +6,14 @@ remain inconclusive; this checker never treats them as evidence of authenticity.
 from __future__ import annotations
 
 import os
-from dotenv import load_dotenv
 from pathlib import Path
 from typing import Any
+
+try:
+    from dotenv import load_dotenv
+except ImportError:
+    def load_dotenv() -> bool:
+        return False
 
 
 def _as_dict(value: Any) -> dict[str, Any]:
@@ -37,7 +42,6 @@ def check_openai_provenance(image_path: str | Path,
     load_dotenv()  
     if client is None:
         key = api_key or os.getenv("OPENAI_API_KEY")
-        print(os.getenv('OPENAI_API_KEY'))
         if not key:
             result.update(status="unavailable",
                           error="OPENAI_API_KEY is not configured")

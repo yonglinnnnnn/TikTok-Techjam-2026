@@ -1,101 +1,369 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "TrueSight provenance block",
-  "type": "object",
-  "required": ["status", "conclusion", "signals", "file", "c2pa", "openai", "metadata"],
-  "properties": {
-    "status": {
-      "enum": ["verified_ai", "verified_capture", "ai_indicated", "invalid", "no_provenance_found", "error"]
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "title": "TrueSight provenance block",
+    "type": "object",
+    "required": [
+        "status",
+        "conclusion",
+        "signals",
+        "file",
+        "c2pa",
+        "openai",
+        "metadata"
+    ],
+    "properties": {
+        "status": {
+            "enum": [
+                "not_checked",
+                "verified_ai",
+                "verified_capture",
+                "ai_indicated",
+                "invalid",
+                "no_provenance_found",
+                "error"
+            ]
+        },
+        "conclusion": {
+            "type": "string"
+        },
+        "signals": {
+            "type": "array",
+            "items": {
+                "$ref": "#/$defs/signal"
+            }
+        },
+        "file": {
+            "type": "object",
+            "required": [
+                "sha256",
+                "size_bytes",
+                "format",
+                "mime_type",
+                "width",
+                "height",
+                "mode"
+            ],
+            "properties": {
+                "sha256": {
+                    "type": [
+                        "string",
+                        "null"
+                    ],
+                    "pattern": "^[a-f0-9]{64}$"
+                },
+                "size_bytes": {
+                    "type": [
+                        "integer",
+                        "null"
+                    ],
+                    "minimum": 1
+                },
+                "format": {
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "mime_type": {
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "width": {
+                    "type": [
+                        "integer",
+                        "null"
+                    ],
+                    "minimum": 1
+                },
+                "height": {
+                    "type": [
+                        "integer",
+                        "null"
+                    ],
+                    "minimum": 1
+                },
+                "mode": {
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                }
+            },
+            "additionalProperties": false
+        },
+        "c2pa": {
+            "type": "object",
+            "required": [
+                "checked",
+                "status",
+                "present",
+                "verified",
+                "active_manifest",
+                "validation_state",
+                "history",
+                "error"
+            ],
+            "properties": {
+                "checked": {
+                    "type": "boolean"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "present": {
+                    "type": [
+                        "boolean",
+                        "null"
+                    ]
+                },
+                "verified": {
+                    "type": "boolean"
+                },
+                "active_manifest": {
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "validation_state": {
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "history": {
+                    "type": [
+                        "object",
+                        "null"
+                    ]
+                },
+                "error": {
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                }
+            },
+            "additionalProperties": false
+        },
+        "openai": {
+            "$ref": "#/$defs/openaiCheck"
+        },
+        "metadata": {
+            "type": "object",
+            "required": [
+                "checked",
+                "present",
+                "ai_markers",
+                "error"
+            ],
+            "properties": {
+                "checked": {
+                    "type": "boolean"
+                },
+                "present": {
+                    "type": [
+                        "boolean",
+                        "null"
+                    ]
+                },
+                "ai_markers": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "error": {
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                }
+            },
+            "additionalProperties": false
+        }
     },
-    "conclusion": {"type": "string"},
-    "signals": {"type": "array", "items": {"$ref": "#/$defs/signal"}},
-    "file": {
-      "type": "object",
-      "required": ["sha256", "size_bytes", "format", "mime_type", "width", "height", "mode"],
-      "properties": {
-        "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
-        "size_bytes": {"type": "integer", "minimum": 1},
-        "format": {"type": ["string", "null"]},
-        "mime_type": {"type": ["string", "null"]},
-        "width": {"type": "integer", "minimum": 1},
-        "height": {"type": "integer", "minimum": 1},
-        "mode": {"type": "string"}
-      },
-      "additionalProperties": false
+    "$defs": {
+        "signal": {
+            "type": "object",
+            "required": [
+                "kind",
+                "provider",
+                "status",
+                "present",
+                "verified",
+                "ai_claim",
+                "source",
+                "verification_basis",
+                "evidence_score",
+                "details"
+            ],
+            "properties": {
+                "kind": {
+                    "enum": [
+                        "content_credential",
+                        "watermark",
+                        "embedded_metadata",
+                        "provider_check"
+                    ]
+                },
+                "provider": {
+                    "type": "string"
+                },
+                "status": {
+                    "enum": [
+                        "verified",
+                        "detected",
+                        "not_detected",
+                        "not_present",
+                        "invalid",
+                        "unavailable",
+                        "error",
+                        "not_checked"
+                    ]
+                },
+                "present": {
+                    "type": [
+                        "boolean",
+                        "null"
+                    ]
+                },
+                "verified": {
+                    "type": "boolean"
+                },
+                "ai_claim": {
+                    "type": "boolean"
+                },
+                "source": {
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "verification_basis": {
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "evidence_score": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                },
+                "details": {
+                    "type": "object"
+                }
+            },
+            "additionalProperties": false
+        },
+        "openaiResult": {
+            "type": "object",
+            "required": [
+                "type",
+                "outcome",
+                "model",
+                "issuer",
+                "generated_at",
+                "validation_state"
+            ],
+            "properties": {
+                "type": {
+                    "enum": [
+                        "c2pa",
+                        "synthid",
+                        "unknown"
+                    ]
+                },
+                "outcome": {
+                    "enum": [
+                        "detected",
+                        "not_detected"
+                    ]
+                },
+                "model": {
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "issuer": {
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "generated_at": {
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "validation_state": {
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                }
+            },
+            "additionalProperties": false
+        },
+        "openaiCheck": {
+            "type": "object",
+            "required": [
+                "checked",
+                "status",
+                "present",
+                "verified",
+                "source",
+                "results",
+                "error"
+            ],
+            "properties": {
+                "checked": {
+                    "type": "boolean"
+                },
+                "status": {
+                    "enum": [
+                        "not_checked",
+                        "unavailable",
+                        "detected",
+                        "not_detected",
+                        "error"
+                    ]
+                },
+                "present": {
+                    "type": [
+                        "boolean",
+                        "null"
+                    ]
+                },
+                "verified": {
+                    "type": "boolean"
+                },
+                "source": {
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "results": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/$defs/openaiResult"
+                    }
+                },
+                "error": {
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                }
+            },
+            "additionalProperties": false
+        }
     },
-    "c2pa": {
-      "type": "object",
-      "required": ["checked", "status", "present", "verified", "active_manifest", "validation_state", "history", "error"],
-      "properties": {
-        "checked": {"type": "boolean"},
-        "status": {"type": "string"},
-        "present": {"type": "boolean"},
-        "verified": {"type": "boolean"},
-        "active_manifest": {"type": ["string", "null"]},
-        "validation_state": {"type": ["string", "null"]},
-        "history": {"type": ["object", "null"]},
-        "error": {"type": ["string", "null"]}
-      },
-      "additionalProperties": false
-    },
-    "openai": {"$ref": "#/$defs/openaiCheck"},
-    "metadata": {
-      "type": "object",
-      "required": ["checked", "present", "ai_markers", "error"],
-      "properties": {
-        "checked": {"type": "boolean"},
-        "present": {"type": "boolean"},
-        "ai_markers": {"type": "array", "items": {"type": "string"}},
-        "error": {"type": ["string", "null"]}
-      },
-      "additionalProperties": false
-    }
-  },
-  "$defs": {
-    "signal": {
-      "type": "object",
-      "required": ["kind", "provider", "status", "present", "verified", "ai_claim", "source", "verification_basis", "evidence_score", "details"],
-      "properties": {
-        "kind": {"enum": ["content_credential", "watermark", "embedded_metadata", "provider_check"]},
-        "provider": {"type": "string"},
-        "status": {"enum": ["verified", "detected", "not_detected", "not_present", "invalid", "unavailable", "error", "not_checked"]},
-        "present": {"type": ["boolean", "null"]},
-        "verified": {"type": "boolean"},
-        "ai_claim": {"type": "boolean"},
-        "source": {"type": ["string", "null"]},
-        "verification_basis": {"type": ["string", "null"]},
-        "evidence_score": {"type": "number", "minimum": 0, "maximum": 1},
-        "details": {"type": "object"}
-      },
-      "additionalProperties": false
-    },
-    "openaiResult": {
-      "type": "object",
-      "required": ["type", "outcome", "model", "issuer", "generated_at", "validation_state"],
-      "properties": {
-        "type": {"enum": ["c2pa", "synthid", "unknown"]},
-        "outcome": {"enum": ["detected", "not_detected"]},
-        "model": {"type": ["string", "null"]},
-        "issuer": {"type": ["string", "null"]},
-        "generated_at": {"type": ["string", "null"]},
-        "validation_state": {"type": ["string", "null"]}
-      },
-      "additionalProperties": false
-    },
-    "openaiCheck": {
-      "type": "object",
-      "required": ["checked", "status", "present", "verified", "source", "results", "error"],
-      "properties": {
-        "checked": {"type": "boolean"},
-        "status": {"enum": ["not_checked", "unavailable", "detected", "not_detected", "error"]},
-        "present": {"type": ["boolean", "null"]},
-        "verified": {"type": "boolean"},
-        "source": {"type": ["string", "null"]},
-        "results": {"type": "array", "items": {"$ref": "#/$defs/openaiResult"}},
-        "error": {"type": ["string", "null"]}
-      },
-      "additionalProperties": false
-    }
-  },
-  "additionalProperties": false
+    "additionalProperties": false
 }

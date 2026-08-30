@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://truesight.local/schemas/evaluation.schema.json",
+  "title": "TrueSight batch evaluation output",
+  "description": "Compact predictions produced by scripts/evaluate.py.",
+  "type": "array",
+  "items": {
+    "$ref": "#/$defs/evaluationRecord"
+  },
+  "$defs": {
+    "evaluationRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "image_path",
+        "pred",
+        "metadata"
+      ],
+      "properties": {
+        "image_path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "pred": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0
+        },
+        "metadata": {
+          "$ref": "#/$defs/evaluationMetadata"
+        }
+      }
+    },
+    "evaluationMetadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "tier1_watermark",
+        "vlm_source_estimate",
+        "heatmap_generated"
+      ],
+      "properties": {
+        "tier1_watermark": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "vlm_source_estimate": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "heatmap_generated": {
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}

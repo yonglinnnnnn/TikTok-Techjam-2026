@@ -144,12 +144,6 @@ def train(config: Config, train_manifest: str, val_manifest: str, output_dir: st
         unfreeze_stages=config.model.unfreeze_stages,
     ).to(device)
 
-    report = model.freeze_report()
-    print(
-        f"Device={device} | trainable={report.trainable_parameters:,} "
-        f"/ {report.total_parameters:,} ({100 * report.trainable_ratio:.2f}%)"
-    )
-
     backbone_parameters = []
     head_parameters = []
     for name, parameter in model.named_parameters():
@@ -159,6 +153,19 @@ def train(config: Config, train_manifest: str, val_manifest: str, output_dir: st
             head_parameters.append(parameter)
         else:
             backbone_parameters.append(parameter)
+
+    # Keep the selected stages in the optimizer, but freeze them during the
+    # classifier warm-up so they can be enabled without rebuilding optimizer
+    # or scheduler state.
+    if config.training.warmup_epochs > 0:
+        for parameter in backbone_parameters:
+            parameter.requires_grad = False
+
+    report = model.freeze_report()
+    print(
+        f"Device={device} | trainable={report.trainable_parameters:,} "
+        f"/ {report.total_parameters:,} ({100 * report.trainable_ratio:.2f}%)"
+    )
 
     optimizer = AdamW(
         [
@@ -195,6 +202,10 @@ def train(config: Config, train_manifest: str, val_manifest: str, output_dir: st
     })
 
     for epoch in range(1, config.training.epochs + 1):
+        if epoch == config.training.warmup_epochs + 1 and backbone_parameters:
+            for parameter in backbone_parameters:
+                parameter.requires_grad = True
+            print(f"Warm-up complete; unfroze the last {config.model.unfreeze_stages} ConvNeXt stage(s)")
         epoch_start = time.perf_counter()
         train_metrics = _train_one_epoch(model, train_loader, criterion, optimizer, scaler, device, config)
         val_metrics = _validate(model, val_loader, device)

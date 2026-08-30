@@ -15,7 +15,7 @@ import sys
 
 import yaml
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "src"))
 
 from truesight.vision.config import load_config
@@ -32,7 +32,7 @@ def set_nested(config: dict, dotted_key: str, value):
 
 def main():
     parser = argparse.ArgumentParser(description="Run a small parameter sweep")
-    parser.add_argument("--base-config", default=str(ROOT / "configs" / "convnext_tiny.yaml"))
+    parser.add_argument("--base-config", default=str(ROOT / "configs" / "model" / "convnext_tiny.yaml"))
     parser.add_argument("--manifest", required=True)
     parser.add_argument("--val-manifest", required=True)
     parser.add_argument("--output-root", default=str(ROOT / "outputs" / "member1" / "tuning"))

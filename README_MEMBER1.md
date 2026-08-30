@@ -60,7 +60,7 @@ For the official demonstration benchmark, the WildFake subset must remain valida
 From the repository root:
 
 ```bash
-pip install -r requirements-member1.txt
+pip install -r requirements.txt
 ```
 
 For a CUDA Colab runtime, install the matching PyTorch build first if necessary, then install the remaining dependencies.
@@ -68,7 +68,7 @@ For a CUDA Colab runtime, install the matching PyTorch build first if necessary,
 ## Quick start
 
 ```bash
-python scripts/train.py \
+python scripts/ConvNext/train.py \
   --manifest data/processed/train_manifest.csv \
   --val-manifest data/processed/val_manifest.csv \
   --output-dir outputs/member1/convnext_tiny
@@ -77,7 +77,7 @@ python scripts/train.py \
 Then:
 
 ```bash
-python scripts/predict.py \
+python scripts/ConvNext/predict.py \
   --checkpoint outputs/member1/convnext_tiny/best.pt \
   --input-dir data/samples \
   --output-json outputs/member1/predictions.json
@@ -86,7 +86,7 @@ python scripts/predict.py \
 Generate a heatmap:
 
 ```bash
-python scripts/gradcam.py \
+python scripts/ConvNext/gradcam.py \
   --checkpoint outputs/member1/convnext_tiny/best.pt \
   --image data/samples/example.jpg \
   --output outputs/member1/heatmaps/example.png
