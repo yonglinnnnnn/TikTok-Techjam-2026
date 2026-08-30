@@ -32,6 +32,7 @@ outputs/metrics/*
 outputs/heatmaps/*
 outputs/figures/*
 !outputs/**/.gitkeep
+tests/fixtures/sample_images/*
 .kaggle/
 *.pt
 *.pth
