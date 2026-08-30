@@ -30,6 +30,7 @@ outputs/metrics/*
 outputs/heatmaps/*
 outputs/figures/*
 !outputs/**/.gitkeep
+tests/fixtures/sample_images/*
 
 # --- Notebooks ---
 .ipynb_checkpoints/
