@@ -17,21 +17,21 @@ venv/
 *.env.local
 **/secrets.*
 
-# --- Datasets, models, generated outputs (never commit these) ---
+# --- Datasets, models, generated outputs ---
 data/raw/*
 data/processed/*
 !data/raw/.gitkeep
 !data/processed/.gitkeep
-models/*.pt
-models/*.pth
-models/*.ckpt
-models/*.onnx
-outputs/
-outputs/predictions/*
-outputs/metrics/*
-outputs/heatmaps/*
-outputs/figures/*
-outputs/forensics/*
+# models/*.pt
+# models/*.pth
+# models/*.ckpt
+# models/*.onnx
+# outputs/
+# outputs/predictions/*
+# outputs/metrics/*
+# outputs/heatmaps/*
+# outputs/figures/*
+# outputs/forensics/*
 !outputs/**/.gitkeep
 tests/fixtures/sample_images/*
 .kaggle/
