@@ -1,0 +1,475 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "TrueSight unified detection result",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "image_path",
+    "is_ai_generated",
+    "confidence",
+    "source",
+    "ai_coverage",
+    "heatmap_path",
+    "provenance",
+    "forensics",
+    "evidence",
+    "latency_ms",
+    "tier1",
+    "tier2",
+    "tier3",
+    "fusion"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "1.0"
+    },
+    "image_path": {
+      "type": "string",
+      "minLength": 1
+    },
+    "is_ai_generated": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "confidence": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": 0,
+      "maximum": 1
+    },
+    "source": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "ai_coverage": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": 0,
+      "maximum": 1
+    },
+    "heatmap_path": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "provenance": {
+      "$ref": "provenance.schema.json"
+    },
+    "forensics": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "$ref": "#/$defs/forensics"
+        }
+      ]
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "latency_ms": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "tier1": {
+      "$ref": "#/$defs/tier1"
+    },
+    "tier2": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "$ref": "#/$defs/tier2"
+        }
+      ]
+    },
+    "tier3": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "$ref": "#/$defs/tier3"
+        }
+      ]
+    },
+    "fusion": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "$ref": "#/$defs/fusion"
+        }
+      ]
+    },
+    "debug_provenance": {
+      "type": "object"
+    }
+  },
+  "$defs": {
+    "box": {
+      "type": "object",
+      "required": [
+        "left",
+        "top",
+        "right",
+        "bottom"
+      ],
+      "properties": {
+        "left": {
+          "type": "number"
+        },
+        "top": {
+          "type": "number"
+        },
+        "right": {
+          "type": "number"
+        },
+        "bottom": {
+          "type": "number"
+        }
+      },
+      "additionalProperties": false
+    },
+    "candidateRegion": {
+      "type": "object",
+      "required": [
+        "id",
+        "location",
+        "box_pixels",
+        "box_normalized",
+        "anomaly_mean",
+        "signal_support"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "location": {
+          "type": "string"
+        },
+        "box_pixels": {
+          "$ref": "#/$defs/box"
+        },
+        "box_normalized": {
+          "$ref": "#/$defs/box"
+        },
+        "anomaly_mean": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "signal_support": {
+          "type": "number",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "forensics": {
+      "type": "object",
+      "required": [
+        "integrity_risk_weight",
+        "candidate_coverage",
+        "candidate_regions",
+        "feature_vector",
+        "artifacts"
+      ],
+      "properties": {
+        "integrity_risk_weight": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "candidate_coverage": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "candidate_regions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/candidateRegion"
+          }
+        },
+        "feature_vector": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "number"
+          }
+        },
+        "artifacts": {
+          "type": "object",
+          "required": [
+            "candidate_mask",
+            "vlm_overlay",
+            "human_review"
+          ],
+          "properties": {
+            "candidate_mask": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "vlm_overlay": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "human_review": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        "debug": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false
+    },
+    "calibration": {
+      "type": "object",
+      "required": [
+        "score",
+        "raw_score",
+        "calibrated",
+        "method",
+        "model_version",
+        "features",
+        "error"
+      ],
+      "properties": {
+        "score": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "raw_score": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "calibrated": {
+          "type": "boolean"
+        },
+        "method": {
+          "type": "string"
+        },
+        "model_version": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "features": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "number"
+          }
+        },
+        "error": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "tier1": {
+      "type": "object",
+      "required": [
+        "watermark_detected",
+        "provenance_verified",
+        "verified_ai_signal",
+        "verified_capture_signal",
+        "severity_weight",
+        "severity_calibration",
+        "forensic_integrity_weight",
+        "requires_tier2"
+      ],
+      "properties": {
+        "watermark_detected": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "provenance_verified": {
+          "type": "boolean"
+        },
+        "verified_ai_signal": {
+          "type": "boolean"
+        },
+        "verified_capture_signal": {
+          "type": "boolean"
+        },
+        "severity_weight": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "severity_calibration": {
+          "$ref": "#/$defs/calibration"
+        },
+        "forensic_integrity_weight": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "requires_tier2": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "tier2": {
+      "type": "object",
+      "required": [
+        "is_ai_generated",
+        "confidence",
+        "source",
+        "ai_coverage",
+        "evidence",
+        "latency_ms"
+      ],
+      "properties": {
+        "is_ai_generated": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "confidence": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        },
+        "source": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "ai_coverage": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "latency_ms": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "tier3": {
+      "type": "object",
+      "required": [
+        "probability",
+        "heatmap_path",
+        "evidence",
+        "latency_ms"
+      ],
+      "properties": {
+        "probability": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        },
+        "heatmap_path": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "latency_ms": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "fusion": {
+      "type": "object",
+      "required": [
+        "method",
+        "calibrated",
+        "decision_threshold",
+        "inputs",
+        "latency_ms"
+      ],
+      "properties": {
+        "method": {
+          "type": "string"
+        },
+        "calibrated": {
+          "type": "boolean"
+        },
+        "decision_threshold": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "inputs": {
+          "type": "object",
+          "additionalProperties": {
+            "type": [
+              "number",
+              "boolean",
+              "null"
+            ]
+          }
+        },
+        "latency_ms": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

@@ -22,17 +22,6 @@ def run_pipeline(image_path: str) -> TrueSightResult:
     
     # Example dummy results for demonstration purposes
     # Fake Tier 1 result
-    result.provenance = {
-        "status": "not_present",
-        "c2pa": None,
-        "openai": None,
-        "metadata": {},
-    }
-
-    result.forensics = {
-        "candidate_regions": [],
-        "artifacts": {},
-    }
 
     result.tier1 = Tier1Result(
         watermark_detected=None,
@@ -40,10 +29,6 @@ def run_pipeline(image_path: str) -> TrueSightResult:
         verified_ai_signal=False,
         verified_capture_signal=False,
         severity_weight=0.0,
-        severity_calibration={
-            "calibrated": False,
-            "method": "policy_v1",
-        },
         forensic_integrity_weight=0.0,
         requires_tier2=True,
     )
