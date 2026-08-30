@@ -31,6 +31,7 @@ outputs/predictions/*
 outputs/metrics/*
 outputs/heatmaps/*
 outputs/figures/*
+outputs/forensics/*
 !outputs/**/.gitkeep
 tests/fixtures/sample_images/*
 .kaggle/
