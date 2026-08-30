@@ -26,11 +26,15 @@ models/*.pt
 models/*.pth
 models/*.ckpt
 models/*.onnx
+outputs/
 outputs/predictions/*
 outputs/metrics/*
 outputs/heatmaps/*
 outputs/figures/*
 !outputs/**/.gitkeep
+.kaggle/
+*.pt
+*.pth
 
 # --- Notebooks ---
 .ipynb_checkpoints/
@@ -49,3 +53,4 @@ Thumbs.db
 
 # --- Docker ---
 *.log
+

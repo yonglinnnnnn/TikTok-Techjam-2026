@@ -4,6 +4,7 @@ import cv2
 import albumentations as A
 from albumentations.pytorch import ToTensorV2
 
+from . import config as config
 from .config import AugmentationConfig
 
 # ImageNet statistics match the pretrained torchvision ConvNeXt weights.
@@ -33,9 +34,9 @@ def build_train_transform(size: int, cfg: AugmentationConfig) -> A.Compose:
                 p=1.0,
             ),
             A.GaussianBlur(
-                sigma_range=cfg.blur_sigma,
-                blur_range=(0, 0),
-                p=1.0,
+                blur_limit=(3, 7),
+                sigma_limit=config.blur_sigma,
+                p=config.p_blur,
             ),
             A.Downscale(
                 scale_range=cfg.downscale,
@@ -53,11 +54,11 @@ def build_train_transform(size: int, cfg: AugmentationConfig) -> A.Compose:
             ),
         ], p=0.65),
         A.ColorJitter(
-            brightness_range=cfg.color_jitter,
-            contrast_range=cfg.color_jitter,
-            saturation_range=cfg.color_jitter,
-            hue_range=(-0.05, 0.05),
-            p=cfg.p_color,
+            brightness=config.color_jitter,
+            contrast=config.color_jitter,
+            saturation=config.color_jitter,
+            hue=(-0.1, 0.1),
+            p=config.p_color,
         ),
         # Explicitly simulate the 80% center-crop scenario from the brief.
         A.OneOf([
