@@ -38,12 +38,16 @@ class TrainingConfig:
 
 @dataclass
 class AugmentationConfig:
+    # Whether robustness augmentations are enabled.
+    enabled: bool = False
+
     jpeg_quality: tuple[int, int] = (30, 90)
     blur_sigma: tuple[float, float] = (0.5, 2.0)
     downscale: tuple[float, float] = (0.25, 0.5)
     noise_std: tuple[float, float] = (0.02, 0.10)
     color_jitter: tuple[float, float] = (0.8, 1.2)
     crop_scale: tuple[float, float] = (0.8, 1.0)
+
     p_jpeg: float = 0.45
     p_blur: float = 0.25
     p_downscale: float = 0.30

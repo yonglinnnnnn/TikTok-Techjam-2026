@@ -1,6 +1,6 @@
 torch>=2.2,<3
 torchvision>=0.17,<1
-albumentations>=2.2,<3
+albumentations
 opencv-python-headless>=4.8
 Pillow>=10
 numpy>=1.24
@@ -13,3 +13,7 @@ pytest>=8.0.0
 pytest-asyncio>=0.24.0
 python-dotenv>=1.0.0
 datasets>=2.20.0  # only needed for scripts/sample_sid_set.py
+kagglehub
+datasets
+huggingface_hub
+tqdm

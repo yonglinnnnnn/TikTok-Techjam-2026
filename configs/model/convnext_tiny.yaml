@@ -5,27 +5,28 @@ model:
   pretrained: true
   num_classes: 1
   dropout: 0.15
-  unfreeze_stages: 2
+  unfreeze_stages: 1
   target_image_size: 224
 
 training:
-  epochs: 12
-  warmup_epochs: 2
-  batch_size: 32
-  num_workers: 2
-  pin_memory: true
-  persistent_workers: true
+  epochs: 5
+  warmup_epochs: 1
+  batch_size: 16
+  num_workers: 0
+  pin_memory: false
+  persistent_workers: false
   backbone_lr: 0.00001
   head_lr: 0.0002
   weight_decay: 0.0001
   label_smoothing: 0.0
   grad_clip_norm: 1.0
   amp: true
-  early_stopping_patience: 4
-  consistency_weight: 0.05
-  use_consistency_view: true
+  early_stopping_patience: 3
+  consistency_weight: 0.0
+  use_consistency_view: false
 
 augmentation:
+  enabled: false
   jpeg_quality: [30, 90]
   blur_sigma: [0.5, 2.0]
   downscale: [0.25, 0.5]
@@ -47,3 +48,4 @@ scheduler:
 output:
   save_last: true
   save_best: true
+
