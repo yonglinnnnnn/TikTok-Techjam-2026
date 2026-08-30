@@ -1,6 +1,6 @@
 torch>=2.2,<3
 torchvision>=0.17,<1
-albumentations>=2.2,<3
+albumentations
 opencv-python-headless>=4.8
 Pillow>=10
 numpy>=1.24
@@ -11,3 +11,9 @@ c2pa-python>=0.28.0
 openai>=2.0,<3
 jsonschema>=4.21,<5
 pytest>=8,<9
+kagglehub
+datasets
+huggingface_hub
+pandas
+Pillow
+tqdm
