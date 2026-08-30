@@ -25,4 +25,5 @@ pandas
 tqdm
 pytest>=8,<9
 matplotlib>=3.8,<4
+c2pa-python
 

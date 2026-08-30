@@ -1,12 +1,15 @@
 """TrueSight image-analysis pipeline."""
 
 from .adapters import (
+    ConvNeXtTier3Adapter,
     FakeTier1Adapter,
     FakeTier2Adapter,
     FakeTier3Adapter,
     ImageNormalizer,
     PassthroughNormalizer,
     PipelineComponents,
+    RealTier1Adapter,
+    RealTier2Adapter,
     Tier1Adapter,
     Tier1Analysis,
     Tier2Adapter,
@@ -24,6 +27,7 @@ from .result_schema import (
 )
 
 __all__ = [
+    "ConvNeXtTier3Adapter",
     "FakeTier1Adapter",
     "FakeTier2Adapter",
     "FakeTier3Adapter",
@@ -31,6 +35,8 @@ __all__ = [
     "ImageNormalizer",
     "PassthroughNormalizer",
     "PipelineComponents",
+    "RealTier1Adapter",
+    "RealTier2Adapter",
     "RoutingDecision",
     "Tier1Adapter",
     "Tier1Analysis",

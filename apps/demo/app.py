@@ -11,7 +11,7 @@ import streamlit as st
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
-from truesight.pipeline import TrueSightResult, run_pipeline
+from truesight.pipeline import PipelineComponents, TrueSightResult, run_pipeline
 
 from components import render_result
 
@@ -20,6 +20,11 @@ MAX_UPLOAD_BYTES = 20 * 1024 * 1024
 RESULT_KEY = "truesight_result"
 UPLOAD_ID_KEY = "truesight_upload_id"
 UPLOAD_TEMP_ROOT = PROJECT_ROOT / ".truesight-tmp"
+
+
+@st.cache_resource
+def pipeline_components() -> PipelineComponents:
+    return PipelineComponents.real()
 
 
 def analyze_upload(file_name: str, file_bytes: bytes) -> TrueSightResult:
@@ -31,7 +36,7 @@ def analyze_upload(file_name: str, file_bytes: bytes) -> TrueSightResult:
     image_path = UPLOAD_TEMP_ROOT / f"{uuid.uuid4().hex}{suffix}"
     image_path.write_bytes(file_bytes)
     try:
-        return run_pipeline(str(image_path))
+        return run_pipeline(str(image_path), components=pipeline_components())
     finally:
         image_path.unlink(missing_ok=True)
 
@@ -49,8 +54,8 @@ def main() -> None:
         "one explainable detection pipeline."
     )
     st.warning(
-        "Prototype mode: Tier outputs currently use development adapters. "
-        "Do not treat this result as a real authenticity verdict."
+        "Prototype mode: Members 1-3 are connected, but final score fusion is "
+        "still uncalibrated. Missing API keys are reported as unavailable."
     )
 
     uploaded_file = st.file_uploader(

@@ -9,7 +9,7 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
-from truesight.pipeline import run_pipeline
+from truesight.pipeline import PipelineComponents, run_pipeline
 
 
 def parse_args() -> argparse.Namespace:
@@ -33,9 +33,10 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
+    components = PipelineComponents.real()
 
     try:
-        result = run_pipeline(str(args.input_path))
+        result = run_pipeline(str(args.input_path), components=components)
     except (FileNotFoundError, ValueError) as exc:
         raise SystemExit(f"TrueSight prediction failed: {exc}") from exc
 

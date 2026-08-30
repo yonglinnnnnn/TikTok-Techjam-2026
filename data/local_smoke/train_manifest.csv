@@ -1,4 +1,0 @@
-image_path,label,source,split
-"data/single_test/real/0000 (10).jpg",0,single_test,train
-"data/single_test/fake/0 (10).jpg",1,single_test,train
-

@@ -1,4 +1,4 @@
-from app.vlm.parser import parse_vlm_response
+from truesight.vlm.parser import parse_vlm_response
 
 
 def test_parses_well_formed_response():

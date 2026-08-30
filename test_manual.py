@@ -1,6 +1,10 @@
 import asyncio
-from dotenv import load_dotenv
-load_dotenv()
+try:
+    from dotenv import load_dotenv
+
+    load_dotenv()
+except ImportError:
+    pass
 
 from truesight.vlm import GeminiProvider, run_vlm_tier
 
@@ -23,4 +27,5 @@ async def main():
         print("latency: ", r.latency_ms, "ms")
         print("raw:     ", r.raw_response)
 
-asyncio.run(main())
+if __name__ == "__main__":
+    asyncio.run(main())

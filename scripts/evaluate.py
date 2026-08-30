@@ -10,7 +10,7 @@ from typing import Any
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
-from truesight.pipeline import TrueSightResult, run_pipeline
+from truesight.pipeline import PipelineComponents, TrueSightResult, run_pipeline
 from truesight.utils import ALLOWED_EXTENSIONS
 
 
@@ -69,13 +69,14 @@ def build_evaluation_record(result: TrueSightResult) -> dict[str, Any]:
 
 def evaluate_directory(
     input_dir: Path,
+    components: PipelineComponents | None = None,
 ) -> tuple[list[dict[str, Any]], list[tuple[Path, str]]]:
     predictions: list[dict[str, Any]] = []
     failures: list[tuple[Path, str]] = []
 
     for image_path in discover_images(input_dir):
         try:
-            result = run_pipeline(str(image_path))
+            result = run_pipeline(str(image_path), components=components)
             predictions.append(build_evaluation_record(result))
         except Exception as exc:
             failures.append((image_path, str(exc)))
@@ -87,7 +88,10 @@ def main() -> None:
     args = parse_args()
 
     try:
-        predictions, failures = evaluate_directory(args.input_dir)
+        predictions, failures = evaluate_directory(
+            args.input_dir,
+            components=PipelineComponents.real(generate_heatmap=False),
+        )
     except NotADirectoryError as exc:
         raise SystemExit(f"TrueSight evaluation failed: {exc}") from exc
 
