@@ -1,9 +1,15 @@
 torch>=2.2,<3
 torchvision>=0.17,<1
-albumentations>=2.2,<3
+albumentations
 opencv-python-headless>=4.8
 Pillow>=10
 numpy>=1.24
 PyYAML>=6
 scikit-learn>=1.3
 pandas>=2.0
+kagglehub
+datasets
+huggingface_hub
+pandas
+Pillow
+tqdm
