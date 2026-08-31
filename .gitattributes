@@ -1,0 +1,2 @@
+models/ConvNext/convnext_2layer_best.pt filter=lfs diff=lfs merge=lfs -text
+models/ConvNext/convnext_1layer_best.pt filter=lfs diff=lfs merge=lfs -text
