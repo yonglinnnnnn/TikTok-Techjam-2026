@@ -162,6 +162,33 @@ def train(config: Config, train_manifest: str, val_manifest: str, output_dir: st
             parameter.requires_grad = False
 
     report = model.freeze_report()
+
+    optimizer_parameter_ids = {
+        id(parameter)
+        for group in optimizer.param_groups
+        for parameter in group["params"]
+    }
+
+    missing_parameters = [
+        parameter
+        for parameter in model.parameters()
+        if parameter.requires_grad
+        and id(parameter) not in optimizer_parameter_ids
+    ]
+
+    print(
+        "After warm-up: "
+        f"trainable={report.trainable_parameters:,} / "
+        f"{report.total_parameters:,}",
+        flush=True,
+    )
+
+    print(
+        "Optimizer missing trainable parameters: "
+        f"{len(missing_parameters):,}",
+        flush=True,
+    )
+
     print(
         f"Device={device} | trainable={report.trainable_parameters:,} "
         f"/ {report.total_parameters:,} ({100 * report.trainable_ratio:.2f}%)"
@@ -185,7 +212,7 @@ def train(config: Config, train_manifest: str, val_manifest: str, output_dir: st
         label_smoothing=config.training.label_smoothing,
     )
     use_amp = bool(config.training.amp and device.type == "cuda")
-    scaler = torch.cuda.amp.GradScaler(enabled=use_amp)
+    scaler = torch.cuda.amp.GradScaler("cuda", enabled=use_amp)
 
     history = []
     best_score = -math.inf
