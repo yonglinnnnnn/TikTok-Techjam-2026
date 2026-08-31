@@ -453,7 +453,7 @@ identified by `false_positive` and `false_negative` in the saved confusion
 matrix, then save the reviewed examples and their heatmaps with the experiment.
 
 | Error type | Representative case | Why it can fail | Mitigation / trade-off |
-|---|---|---|
+|---|---|---|---|
 | False positive | A real low-light, highly compressed, or heavily filtered social-media photo | Noise, JPEG blocks, sharpening, and unusual texture can resemble generative artifacts | Stronger real-camera and social-media data reduces these errors, but overly aggressive augmentation can dilute useful AI cues |
 | False positive | A legitimate composite, studio image, or repeated natural pattern | Blind-forensic maps can flag edit boundaries or repeated texture without proving AI origin | Keep forensic integrity capped and require Tier 2/3 confirmation; this preserves precision but may add latency |
 | False negative | A high-quality modern AI image with no provenance and realistic anatomy/lighting | Generator artifacts may be subtle or outside the training distribution | Broaden generator coverage and use a held-out, recent benchmark; this increases data and training cost |
