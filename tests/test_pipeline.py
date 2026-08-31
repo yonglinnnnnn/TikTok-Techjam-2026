@@ -24,11 +24,14 @@ class PipelineTests(unittest.TestCase):
 
         self.assertIsInstance(result, TrueSightResult)
         self.assertEqual(result.image_path, str(SAMPLE_IMAGE))
-        self.assertEqual(result.confidence, 0.82)
+        self.assertAlmostEqual(result.confidence, 0.778)
         self.assertTrue(result.is_ai_generated)
         self.assertIsNotNone(result.tier2)
         self.assertIsNotNone(result.tier3)
         self.assertIsNotNone(result.fusion)
+        self.assertEqual(
+            result.fusion.method, "temporary_tier2_tier3_weighted"
+        )
 
     def test_result_can_be_serialized_to_dict(self) -> None:
         result = run_pipeline(str(SAMPLE_IMAGE))
