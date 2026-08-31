@@ -22,8 +22,8 @@ data/raw/*
 data/processed/*
 !data/raw/.gitkeep
 !data/processed/.gitkeep
-# models/*.pt
-# models/*.pth
+models/*.pt
+models/*.pth
 # models/*.ckpt
 # models/*.onnx
 # outputs/
@@ -32,6 +32,7 @@ data/processed/*
 # outputs/heatmaps/*
 # outputs/figures/*
 # outputs/forensics/*
+outputs/*.pt
 !outputs/**/.gitkeep
 tests/fixtures/sample_images/*
 .kaggle/
