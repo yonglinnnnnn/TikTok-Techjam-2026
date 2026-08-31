@@ -9,7 +9,7 @@ from PIL import Image
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from truesight.provenance.c2pa_checker import _history
+from truesight.provenance.c2pa_checker import _history, check_c2pa
 from truesight.provenance.scoring import score_signals
 from truesight.provenance.signals import (
     aggregate_signals,
@@ -56,6 +56,15 @@ def test_c2pa_history_builds_ingredient_chain_oldest_first():
     assert [item["manifest"] for item in history["timeline"]] == ["m1", "m2", "m2"]
     assert history["origin_type"] == capture
     assert history["content_edited"] is True
+
+
+def test_official_trust_list_verifies_conforming_capture():
+    result = check_c2pa(ROOT / "data" / "greencheckmark-trusted-sample.jpg")
+
+    assert result["present"] is True
+    assert result["validation_state"] == "trusted"
+    assert result["verified"] is True
+    assert result["history"]["origin_type"].endswith("digitalCapture")
 
 
 def test_verified_capture_does_not_skip_downstream():

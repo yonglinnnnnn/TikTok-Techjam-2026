@@ -11,6 +11,18 @@ pip install -r requirements.txt
 
 The local C2PA, metadata, and forensic checks do not require an API key.
 
+Tier 1 loads the official C2PA Conformance Trust List bundled at
+`configs/c2pa/C2PA-TRUST-LIST.pem`. Override it in deployments with:
+
+```powershell
+$env:TRUESIGHT_C2PA_TRUST_ANCHORS = "C:\path\to\C2PA-TRUST-LIST.pem"
+```
+
+The bundled list comes from the C2PA Conformance Program repository:
+https://github.com/c2pa-org/conformance-public/tree/main/trust-list
+Refresh it deliberately as part of dependency/security maintenance; do not
+silently fetch mutable trust anchors during image analysis.
+
 ## Running
 
 ```powershell
@@ -113,3 +125,8 @@ calling it deployment-calibrated. Without an artifact, the output explicitly say
 6. Trusted digital-capture asset: record capture claim but continue downstream.
 7. Tampered signed asset: invalid credential; continue downstream.
 8. Forged AI-related EXIF: weak unverified metadata only.
+
+The repository includes `data/greencheckmark-trusted-sample.jpg` as a positive
+trusted-capture fixture. With the bundled trust list it should produce
+`validation_state: trusted`, `provenance_verified: true`, and
+`verified_capture_signal: true`.

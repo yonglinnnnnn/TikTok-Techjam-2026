@@ -1,8 +1,14 @@
 """C2PA/JUMBF provenance extraction and cryptographic validation."""
 from __future__ import annotations
 import json
+import os
 from pathlib import Path
 from typing import Any
+
+DEFAULT_TRUST_ANCHORS = (
+    Path(__file__).resolve().parents[3] / "configs" / "c2pa" /
+    "C2PA-TRUST-LIST.pem"
+)
 
 CONTENT_EDIT_ACTIONS = {
     "c2pa.addedText", "c2pa.adjustedColor", "c2pa.cropped", "c2pa.deleted",
@@ -17,6 +23,14 @@ NON_EDIT_ACTIONS = {
     "c2pa.created", "c2pa.opened", "c2pa.published", "c2pa.saved",
     "c2pa.managed", "c2pa.produced", "c2pa.edited.metadata",
 }
+
+def _reader_context(context_type: Any) -> Any | None:
+    configured = os.getenv("TRUESIGHT_C2PA_TRUST_ANCHORS")
+    trust_path = Path(configured) if configured else DEFAULT_TRUST_ANCHORS
+    if not trust_path.is_file():
+        return None
+    anchors = trust_path.read_text(encoding="utf-8")
+    return context_type.from_dict({"trust": {"trust_anchors": anchors}})
 
 def _actions(manifest: dict[str, Any]) -> list[dict[str, Any]]:
     found: list[dict[str, Any]] = []
@@ -201,13 +215,14 @@ def check_c2pa(image_path: str | Path) -> dict[str, Any]:
         "active_manifest": None, "validation_state": None,
         "validation_results": None, "history": None, "manifest": None, "error": None}
     try:
-        from c2pa import Reader
+        from c2pa import Context, Reader
     except ImportError:
         result["status"] = "unavailable"
         result["error"] = "c2pa-python is not installed"
         return result
     try:
-        with Reader(str(image_path)) as reader:
+        context = _reader_context(Context)
+        with Reader(str(image_path), context=context) as reader:
             store = json.loads(reader.json())
             label = store.get("active_manifest")
             manifest = (store.get("manifests") or {}).get(label, {})
