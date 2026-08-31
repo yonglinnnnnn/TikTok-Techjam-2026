@@ -162,29 +162,29 @@ class ConvNeXtTier3Adapter:
         if self.heatmap_dir is None:
             return None
 
-        import cv2
+        from ..vision.gradcam import (
+            GradCAM,
+            preprocess_image,
+            save_heatmap_overlay,
+        )
 
-        from ..vision.augmentations import build_clean_transform
-        from ..vision.gradcam import ConvNeXtGradCAM, overlay_heatmap
-
-        image_bgr = cv2.imread(image_path, cv2.IMREAD_COLOR)
-        if image_bgr is None:
-            raise FileNotFoundError(image_path)
-        image_rgb = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2RGB)
         device = next(model.parameters()).device
-        tensor = build_clean_transform(self.image_size)(
-            image=image_rgb
-        )["image"].unsqueeze(0).to(device)
+        tensor, display_image = preprocess_image(
+            image_path,
+            image_size=self.image_size,
+        )
+        tensor = tensor.to(device)
 
-        cam = ConvNeXtGradCAM(model)
+        cam = GradCAM(model)
         try:
-            _, heat = cam(tensor)
+            result = cam.generate(tensor)
+            heatmap = result.heatmap
         finally:
             cam.remove_hooks()
 
         digest = hashlib.sha256(str(Path(image_path).resolve()).encode()).hexdigest()[:10]
         output_path = self.heatmap_dir / f"{Path(image_path).stem}_{digest}.png"
-        overlay_heatmap(image_rgb, heat, output_path)
+        save_heatmap_overlay(display_image, heatmap, output_path)
         return str(output_path)
 
     def predict(self, normalized_image_path: str) -> Tier3Result:

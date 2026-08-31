@@ -266,7 +266,7 @@ class GradCAM:
 
 
 def save_heatmap_overlay(
-    display_image: Image.Image,
+    display_image: Image.Image | np.ndarray,
     heatmap: np.ndarray,
     output_path: str | Path,
     alpha: float = 0.45,
@@ -283,9 +283,18 @@ def save_heatmap_overlay(
         exist_ok=True,
     )
 
-    image_array = np.asarray(
-        display_image.convert("RGB")
-    )
+    if isinstance(display_image, Image.Image):
+        image_array = np.asarray(
+            display_image.convert("RGB")
+        )
+    else:
+        image_array = np.asarray(display_image)
+        if image_array.ndim != 3 or image_array.shape[2] != 3:
+            raise ValueError(
+                "display_image must be an RGB image with shape [H, W, 3]."
+            )
+        if image_array.dtype != np.uint8:
+            image_array = np.clip(image_array, 0, 255).astype(np.uint8)
 
     heatmap_uint8 = np.uint8(
         np.clip(heatmap, 0.0, 1.0) * 255

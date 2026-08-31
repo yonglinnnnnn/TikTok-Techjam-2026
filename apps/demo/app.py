@@ -97,7 +97,8 @@ def main() -> None:
         except (FileNotFoundError, ValueError) as exc:
             st.error(f"Analysis failed: {exc}")
             st.session_state.pop(RESULT_KEY, None)
-        except Exception:
+        except Exception as exc:
+            print(exc)
             st.error("Analysis failed because an internal component returned an error.")
             st.session_state.pop(RESULT_KEY, None)
         else:

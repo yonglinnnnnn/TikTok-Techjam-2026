@@ -6,10 +6,10 @@ try:
 except ImportError:
     pass
 
-from truesight.vlm import GeminiProvider, run_vlm_tier
+from src.truesight.vlm import GeminiProvider, run_vlm_tier
 
 async def main():
-    image_path = "tests/fixtures/sample_images/full_synthetic_full_synthetic_004934.jpg"
+    image_path = "tests/fixture/sample_images/donut.jpeg"
 
     result = await run_vlm_tier(image_path, [GeminiProvider()])
 

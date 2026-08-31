@@ -5,9 +5,30 @@ from .adapters import PipelineComponents, Tier2Input
 from .router import decide_route
 from .result_schema import (
     FusionResult,
+    Tier2Result,
     TrueSightResult,
 )
 
+def tier2_ai_probability(tier2: Tier2Result | None) -> float | None:
+    """Convert Tier 2's directional verdict into P(AI-generated)."""
+    if (tier2 is None or tier2.confidence is None or
+            tier2.is_ai_generated is None or
+            tier2.source in (None, "Uncertain")):
+        return None
+    return tier2.confidence if tier2.is_ai_generated else 1.0 - tier2.confidence
+
+def combine_probabilities(vlm_probability: float | None,
+                    convnext_probability: float | None) -> tuple[float | None, str]:
+    """Conservative interim policy pending fitted, held-out calibration."""
+    if convnext_probability is None:
+        return vlm_probability, "vlm_only"
+    if vlm_probability is None:
+        return convnext_probability, "convnext_only"
+
+    return (
+        0.65 * convnext_probability + 0.35 * vlm_probability,
+        "tier2_tier3_weighted",
+    )
 
 def run_pipeline(
     image_path: str,
@@ -67,15 +88,15 @@ def run_pipeline(
                 normalized_image_path
             )
 
-        vlm_confidence = (
-            result.tier2.confidence if result.tier2 is not None else None
-        )
+        vlm_confidence = result.tier2.confidence if result.tier2 is not None else None
+        vlm_probability = tier2_ai_probability(result.tier2)
         convnext_probability = (
             result.tier3.probability if result.tier3 is not None else None
         )
 
-        # Temporary fusion. This deliberately does not add raw scores.
-        result.confidence = convnext_probability
+        result.confidence, fusion_method = combine_probabilities(
+            vlm_probability, convnext_probability
+        )
         result.is_ai_generated = (
             None
             if result.confidence is None
@@ -87,12 +108,17 @@ def run_pipeline(
             result.ai_coverage = result.tier2.ai_coverage
             result.evidence.extend(result.tier2.evidence)
 
+        if fusion_method == "convnext_led_disagreement":
+            result.evidence.append(
+                "Tier 2 (VLM) and Tier 3 (ConvNext) disagree; final confidence is ConvNext-led"
+            )
+
         if result.tier3 is not None:
             result.heatmap_path = result.tier3.heatmap_path
             result.evidence.extend(result.tier3.evidence)
 
         result.fusion = FusionResult(
-            method="temporary_convnext_only",
+            method=fusion_method,
             calibrated=False,
             decision_threshold=0.5,
             inputs={
@@ -104,6 +130,7 @@ def run_pipeline(
                     result.tier1.forensic_integrity_weight
                 ),
                 "vlm_confidence": vlm_confidence,
+                "vlm_ai_probability": vlm_probability,
                 "convnext_probability": convnext_probability,
             },
             latency_ms=0,
@@ -112,5 +139,4 @@ def run_pipeline(
     result.latency_ms = int(
         (perf_counter() - pipeline_started) * 1000
     )
-
     return result
