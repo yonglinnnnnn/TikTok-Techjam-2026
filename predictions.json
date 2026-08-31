@@ -1,0 +1,10 @@
+[
+  {
+    "image_path": "data\\samples\\image_1.jpg",
+    "pred": 0.82
+  },
+  {
+    "image_path": "data\\samples\\image_2.jpg",
+    "pred": 0.82
+  }
+]

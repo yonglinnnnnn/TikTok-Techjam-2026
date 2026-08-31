@@ -10,6 +10,7 @@ venv/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+.truesight-tmp/
 
 # --- Env / secrets ---
 .env
@@ -25,11 +26,17 @@ models/*.pt
 models/*.pth
 models/*.ckpt
 models/*.onnx
+outputs/
 outputs/predictions/*
 outputs/metrics/*
 outputs/heatmaps/*
 outputs/figures/*
+outputs/forensics/*
 !outputs/**/.gitkeep
+tests/fixtures/sample_images/*
+.kaggle/
+*.pt
+*.pth
 
 # --- Notebooks ---
 .ipynb_checkpoints/
@@ -48,3 +55,4 @@ Thumbs.db
 
 # --- Docker ---
 *.log
+

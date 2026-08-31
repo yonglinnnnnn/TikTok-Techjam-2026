@@ -5,7 +5,7 @@ import argparse
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "src"))
 
 from truesight.vision.config import load_config
@@ -16,7 +16,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Train the TrueSight ConvNeXt AIGC detector")
     parser.add_argument("--manifest", required=True, help="Training CSV manifest")
     parser.add_argument("--val-manifest", required=True, help="Validation CSV manifest")
-    parser.add_argument("--config", default=str(ROOT / "configs" / "convnext_tiny.yaml"))
+    parser.add_argument("--config", default=str(ROOT / "configs" / "model" / "convnext_tiny.yaml"))
     parser.add_argument("--output-dir", default=str(ROOT / "outputs" / "member1" / "convnext_tiny"))
     args = parser.parse_args()
 

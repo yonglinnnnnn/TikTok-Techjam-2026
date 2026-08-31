@@ -18,10 +18,12 @@ def build_train_transform(size: int, cfg: AugmentationConfig) -> A.Compose:
     hackathon brief. Parameters are exposed through YAML so experiments can be
     logged without editing source code.
     """
-    return A.Compose([
+    base = [
         A.SmallestMaxSize(max_size=size, interpolation=cv2.INTER_AREA, p=1.0),
         A.RandomCrop(height=size, width=size, p=1.0),
         A.HorizontalFlip(p=cfg.p_horizontal_flip),
+    ]
+    robust = [] if not cfg.enabled else [
         # A corruption slot prevents every heavy degradation from being applied
         # simultaneously, while still sampling across all challenge-specified
         # failure modes. Color jitter is kept separate because it is usually
@@ -33,9 +35,9 @@ def build_train_transform(size: int, cfg: AugmentationConfig) -> A.Compose:
                 p=1.0,
             ),
             A.GaussianBlur(
-                sigma_range=cfg.blur_sigma,
-                blur_range=(0, 0),
-                p=1.0,
+                blur_limit=(3, 7),
+                sigma_limit=cfg.blur_sigma,
+                p=cfg.p_blur,
             ),
             A.Downscale(
                 scale_range=cfg.downscale,
@@ -53,10 +55,10 @@ def build_train_transform(size: int, cfg: AugmentationConfig) -> A.Compose:
             ),
         ], p=0.65),
         A.ColorJitter(
-            brightness_range=cfg.color_jitter,
-            contrast_range=cfg.color_jitter,
-            saturation_range=cfg.color_jitter,
-            hue_range=(-0.05, 0.05),
+            brightness=cfg.color_jitter,
+            contrast=cfg.color_jitter,
+            saturation=cfg.color_jitter,
+            hue=(-0.1, 0.1),
             p=cfg.p_color,
         ),
         # Explicitly simulate the 80% center-crop scenario from the brief.
@@ -64,6 +66,8 @@ def build_train_transform(size: int, cfg: AugmentationConfig) -> A.Compose:
             A.CenterCrop(height=int(size * 0.8), width=int(size * 0.8), p=1.0),
             A.NoOp(p=1.0),
         ], p=cfg.p_crop),
+    ]
+    return A.Compose(base + robust + [
         A.Resize(height=size, width=size, interpolation=cv2.INTER_AREA, p=1.0),
         A.Normalize(mean=IMAGENET_MEAN, std=IMAGENET_STD, max_pixel_value=255.0),
         ToTensorV2(),
@@ -94,7 +98,7 @@ def build_consistency_transform(size: int, cfg: AugmentationConfig) -> A.Compose
         ),
         A.OneOf([
             A.ImageCompression(quality_range=cfg.jpeg_quality, compression_type="jpeg", p=1.0),
-            A.GaussianBlur(sigma_range=cfg.blur_sigma, blur_range=(0, 0), p=1.0),
+            A.GaussianBlur(blur_limit=(3, 7), sigma_limit=cfg.blur_sigma, p=1.0),
             A.Downscale(
                 scale_range=cfg.downscale,
                 interpolation_pair={"downscale": cv2.INTER_AREA, "upscale": cv2.INTER_LINEAR},
@@ -108,10 +112,10 @@ def build_consistency_transform(size: int, cfg: AugmentationConfig) -> A.Compose
             ),
         ], p=0.85),
         A.ColorJitter(
-            brightness_range=cfg.color_jitter,
-            contrast_range=cfg.color_jitter,
-            saturation_range=cfg.color_jitter,
-            hue_range=(-0.05, 0.05),
+            brightness=cfg.color_jitter,
+            contrast=cfg.color_jitter,
+            saturation=cfg.color_jitter,
+            hue=(-0.05, 0.05),
             p=0.5,
         ),
         A.Normalize(mean=IMAGENET_MEAN, std=IMAGENET_STD, max_pixel_value=255.0),
