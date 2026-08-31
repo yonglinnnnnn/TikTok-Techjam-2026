@@ -5,13 +5,13 @@ model:
   pretrained: true
   num_classes: 1
   dropout: 0.15
-  unfreeze_stages: 1
+  unfreeze_stages: 2
   target_image_size: 224
 
 training:
   epochs: 5
   warmup_epochs: 1
-  batch_size: 16
+  batch_size: 8
   num_workers: 0
   pin_memory: false
   persistent_workers: false
@@ -20,7 +20,7 @@ training:
   weight_decay: 0.0001
   label_smoothing: 0.0
   grad_clip_norm: 1.0
-  amp: true
+  amp: false
   early_stopping_patience: 3
   consistency_weight: 0.0
   use_consistency_view: false
