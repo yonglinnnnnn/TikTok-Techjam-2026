@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 import sys
 from pathlib import Path
-from types import SimpleNamespace
 
 from PIL import Image
 
@@ -11,7 +10,6 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
 from truesight.provenance.c2pa_checker import _history
-from truesight.provenance.openai_checker import check_openai_provenance
 from truesight.provenance.scoring import score_signals
 from truesight.provenance.signals import (
     aggregate_signals,
@@ -60,50 +58,6 @@ def test_c2pa_history_builds_ingredient_chain_oldest_first():
     assert history["content_edited"] is True
 
 
-def test_openai_checker_normalizes_c2pa_and_synthid(tmp_path):
-    image_path = tmp_path / "sample.jpg"
-    image_path.write_bytes(b"original-file-bytes")
-
-    class Checks:
-        def create(self, *, file):
-            assert file == b"original-file-bytes"
-            return SimpleNamespace(results=[
-                {"type": "c2pa", "outcome": "detected", "model": "gpt-image-1",
-                 "issuer": "OpenAI", "generated_at": "2026-01-01T00:00:00Z",
-                 "validation_state": "trusted"},
-                {"type": "synthid", "outcome": "detected", "model": "gpt-image-1",
-                 "generated_at": None},
-            ])
-
-    client = SimpleNamespace(content_provenance_checks=Checks())
-    result = check_openai_provenance(image_path, client=client)
-
-    assert result["checked"] is True
-    assert result["status"] == "detected"
-    assert result["verified"] is True
-    assert {item["type"] for item in result["results"]} == {"c2pa", "synthid"}
-
-
-def test_general_signals_and_routing_for_provider_watermark():
-    c2pa = {"status": "not_present", "present": False, "verified": False,
-            "validation_state": None, "history": None}
-    metadata = {"checked": True, "metadata": {}, "ai_markers": [], "error": None}
-    openai_result = {
-        "checked": True, "status": "detected", "present": True,
-        "verified": True, "source": "gpt-image-1", "error": None,
-        "results": [{"type": "synthid", "outcome": "detected",
-                     "model": "gpt-image-1", "issuer": None,
-                     "generated_at": None, "validation_state": None}],
-    }
-
-    signals, severity = score_signals(aggregate_signals(c2pa, metadata, openai_result))
-
-    assert has_verified_ai_signal(signals) is True
-    assert watermark_detection(signals) is True
-    assert severity["score"] == 0.97
-    assert severity["calibrated"] is False
-
-
 def test_verified_capture_does_not_skip_downstream():
     capture = "http://cv.iptc.org/newscodes/digitalsourcetype/digitalCapture"
     c2pa = {
@@ -113,9 +67,7 @@ def test_verified_capture_does_not_skip_downstream():
                     "transformed": False, "has_unclassified_actions": False},
     }
     metadata = {"checked": True, "metadata": {}, "ai_markers": [], "error": None}
-    openai_result = {"checked": False, "status": "not_checked", "present": None,
-                     "verified": False, "source": None, "results": [], "error": None}
-    signals, _ = score_signals(aggregate_signals(c2pa, metadata, openai_result))
+    signals, _ = score_signals(aggregate_signals(c2pa, metadata))
 
     assert has_verified_capture_signal(signals, c2pa) is True
     assert has_verified_ai_signal(signals) is False
@@ -139,9 +91,7 @@ def test_later_ai_composite_is_not_misclassified_as_verified_capture():
         },
     }
     metadata = {"checked": True, "metadata": {}, "ai_markers": [], "error": None}
-    openai_result = {"checked": False, "status": "not_checked", "present": None,
-                     "verified": False, "source": None, "results": [], "error": None}
-    signals, _ = score_signals(aggregate_signals(c2pa, metadata, openai_result))
+    signals, _ = score_signals(aggregate_signals(c2pa, metadata))
 
     assert has_verified_capture_signal(signals, c2pa) is False
     assert has_verified_ai_signal(signals) is True
@@ -188,11 +138,8 @@ def test_unified_schema_accepts_tier1_output(tmp_path, monkeypatch):
         "validation_results": None, "history": None, "manifest": None, "error": None,
     }
     no_metadata = {"checked": True, "ai_markers": [], "metadata": {}, "error": None}
-    no_openai = {"checked": False, "status": "not_checked", "present": None,
-                 "verified": False, "source": None, "results": [], "error": None}
     monkeypatch.setattr(tier1, "check_c2pa", lambda _path: no_c2pa)
     monkeypatch.setattr(tier1, "check_metadata", lambda _path: no_metadata)
-    monkeypatch.setattr(tier1, "check_openai_provenance", lambda _path: no_openai)
 
     result = tier1.analyze_tier1(image_path, run_forensics=False)
     schema_path = ROOT / "schemas" / "prediction.schema.json"
@@ -204,7 +151,10 @@ def test_unified_schema_accepts_tier1_output(tmp_path, monkeypatch):
 
     jsonschema.Draft202012Validator(schema, registry=registry).validate(result)
     assert result["tier1"]["requires_tier2"] is True
+    assert result["tier1"]["provenance_detected"] is False
+    assert result["tier1"]["provenance_verified"] is False
     assert result["is_ai_generated"] is None
+    assert "openai" not in result["provenance"]
 
     result["tier2"] = {
         "is_ai_generated": True, "confidence": 0.72, "source": "unknown",
@@ -223,3 +173,28 @@ def test_unified_schema_accepts_tier1_output(tmp_path, monkeypatch):
         "latency_ms": 2,
     }
     jsonschema.Draft202012Validator(schema, registry=registry).validate(result)
+
+
+def test_valid_untrusted_c2pa_without_attribution_reports_detected(tmp_path, monkeypatch):
+    from truesight.provenance import tier1
+
+    image_path = tmp_path / "sample.jpg"
+    Image.new("RGB", (64, 64), "white").save(image_path)
+    c2pa = {
+        "checked": True, "status": "valid", "present": True,
+        "verified": False, "active_manifest": "example:manifest",
+        "validation_state": "valid", "validation_results": {},
+        "history": {"origin_type": None, "timeline": []},
+        "manifest": {}, "error": None,
+    }
+    metadata = {"checked": True, "ai_markers": [], "metadata": {}, "error": None}
+    monkeypatch.setattr(tier1, "check_c2pa", lambda _path: c2pa)
+    monkeypatch.setattr(tier1, "check_metadata", lambda _path: metadata)
+
+    result = tier1.analyze_tier1(image_path, run_forensics=False)
+
+    assert result["provenance"]["status"] == "detected"
+    assert result["provenance"]["c2pa"]["present"] is True
+    assert result["tier1"]["provenance_detected"] is True
+    assert result["tier1"]["provenance_verified"] is False
+    assert "detected but is not verified" in result["provenance"]["conclusion"]

@@ -5,9 +5,10 @@
 ```text
 Original uploaded bytes
         |
-        +--> Tier 1: C2PA + OpenAI provenance + metadata + blind forensics
+        +--> Tier 1: C2PA + metadata + blind forensics
         |        |
-        |        +--> verified AI signal: fusion may use the fast path
+        |        +--> trusted C2PA AI claim: fusion may use the fast path
+        |        +--> valid/untrusted C2PA: retain as detected and continue
         |        +--> otherwise: continue
         |
         +--> Normalized derivative (never overwrite original)
@@ -32,6 +33,7 @@ vlm_input = {
     "forensic_overlay": result["forensics"]["artifacts"]["vlm_overlay"],
     "candidate_regions": result["forensics"]["candidate_regions"],
     "provenance_status": result["provenance"]["status"],
+    "provenance_detected": result["tier1"]["provenance_detected"],
     "provenance_verified": result["tier1"]["provenance_verified"],
 }
 ```
@@ -96,6 +98,14 @@ payloads should be hidden unless developer mode is enabled.
 
 - `null`: unknown, unavailable, or not owned by the current tier.
 - `false`: the relevant checker ran and returned a negative result.
-- `requires_tier2: false`: only a verified AI-attributed credential/watermark.
+- `provenance_detected`: at least one supported provenance signal is present.
+- `provenance_verified`: at least one detected signal passes verification policy.
+- `requires_tier2: false`: only a trusted, AI-attributed C2PA credential.
 - verified capture: supporting negative evidence, but still continue.
+- `provenance.status: detected`: provenance exists, but it is not a verified
+  AI/capture result; continue.
 - no provenance: no conclusion; still continue.
+
+`signals[].evidence_score` and `tier1.severity_weight` measure AI-generation
+evidence. Do not interpret `0.0` as "no C2PA" or "credential invalid"; inspect
+`present`, `validation_state`, and `verified` for credential state.

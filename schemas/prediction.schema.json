@@ -86,9 +86,10 @@
     },
     "tier1": {
       "type": "object",
-      "required": ["watermark_detected", "provenance_verified", "verified_ai_signal", "verified_capture_signal", "severity_weight", "severity_calibration", "forensic_integrity_weight", "requires_tier2"],
+      "required": ["watermark_detected", "provenance_detected", "provenance_verified", "verified_ai_signal", "verified_capture_signal", "severity_weight", "severity_calibration", "forensic_integrity_weight", "requires_tier2"],
       "properties": {
         "watermark_detected": {"type": ["boolean", "null"]},
+        "provenance_detected": {"type": "boolean"},
         "provenance_verified": {"type": "boolean"},
         "verified_ai_signal": {"type": "boolean"},
         "verified_capture_signal": {"type": "boolean"},

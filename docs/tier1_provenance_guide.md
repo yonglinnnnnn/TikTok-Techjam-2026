@@ -9,19 +9,7 @@ python -m pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
-The local C2PA and forensic checks work without an API key. To enable OpenAI's
-image provenance check, set the key in the process environment:
-
-```powershell
-$env:OPENAI_API_KEY = "your-key"
-```
-
-The official endpoint checks supported OpenAI image signals and can return both
-C2PA and image SynthID results:
-https://developers.openai.com/api/reference/python/resources/content_provenance_checks/methods/create
-
-The removed `synthid-text` package is not used. No separate key-dependent
-watermark provider is registered.
+The local C2PA, metadata, and forensic checks do not require an API key.
 
 ## Running
 
@@ -33,7 +21,6 @@ python -m truesight.provenance.tier1 data/image.jpg
 Useful flags:
 
 ```text
---skip-openai-provenance   Avoid the remote provider check
 --skip-forensics           Run provenance only
 --debug-provenance         Include raw manifest/validation/metadata diagnostics
 --debug-forensics          Include individual forensic maps and thresholds
@@ -44,6 +31,20 @@ Always run Tier 1 on the untouched uploaded bytes. Any RGB conversion, EXIF
 orientation, resize, or recompression must produce a separate file for Tier 2/3.
 
 ## C2PA result
+
+The C2PA SDK validation state and the pipeline verification flag answer different
+questions:
+
+- `valid`: the signature, assertion hashes, and asset hash validate, but the
+  signing identity is not anchored in the verifier's trust store;
+- `trusted`: the credential is valid and its signer chains to an approved trust
+  anchor;
+- `invalid`: at least one validation check failed.
+
+Tier 1 preserves the SDK value in `provenance.c2pa.validation_state`. It sets
+`verified: true` only for `trusted`; it never rewrites `valid` as `trusted`.
+A valid-but-untrusted credential is still reported as present and produces the
+overall provenance status `detected`, not `no_provenance_found`.
 
 `provenance.c2pa.history.chain` contains:
 
@@ -56,6 +57,31 @@ orientation, resize, or recompression must produce a separate file for Tier 2/3.
 
 `content_edited` and `transformed` describe signed, declared actions. Their being
 false does not prove that no undeclared edit ever occurred.
+
+## Status and score interpretation
+
+The overall `provenance.status` values used by Tier 1 are:
+
+- `verified_ai`: a trusted C2PA credential declares an AI source type;
+- `verified_capture`: a trusted credential declares digital capture and passes
+  the capture-history policy;
+- `ai_indicated`: unverified provenance or metadata indicates AI generation;
+- `detected`: a provenance signal exists but has no verified AI/capture result;
+- `invalid`: a credential is present but fails validation;
+- `no_provenance_found`: no supported provenance signal is present.
+
+`signals[].evidence_score` and `tier1.severity_weight` measure evidence of AI
+generation. They do not measure credential integrity. A valid camera credential
+with `ai_claim: false` therefore correctly has `evidence_score: 0.0`. Blind
+forensic anomaly evidence remains separate in `tier1.forensic_integrity_weight`.
+
+For routing and filtering, Tier 1 exposes two separate booleans:
+
+- `provenance_detected`: at least one supported signal has `present: true`;
+- `provenance_verified`: at least one signal passes its verification policy.
+
+For example, valid-but-untrusted C2PA produces `provenance_detected: true` and
+`provenance_verified: false`.
 
 ## Severity calibration
 
@@ -80,11 +106,10 @@ calling it deployment-calibrated. Without an artifact, the output explicitly say
 ## Manual verification cases
 
 1. Plain camera JPEG: no positive provenance; continue to Tier 2.
-2. Original supported OpenAI image: retain original bytes; inspect separate C2PA
-   and SynthID signals.
-3. Re-saved OpenAI image: missing signals remain inconclusive.
-4. Trusted C2PA AI asset: verified AI signal; fast path allowed.
-5. Trusted digital-capture asset: record capture claim but continue downstream.
-6. Tampered signed asset: invalid credential; continue downstream.
-7. Forged `Software=OpenAI` EXIF: weak unverified metadata only.
-8. No API key: OpenAI provider status `unavailable`, not `not_detected`.
+2. Original C2PA image: retain original bytes and inspect the credential.
+3. Re-saved C2PA image: missing credentials remain inconclusive.
+4. Valid but untrusted C2PA asset: status `detected`; continue downstream.
+5. Trusted C2PA AI asset: verified AI signal; fast path allowed.
+6. Trusted digital-capture asset: record capture claim but continue downstream.
+7. Tampered signed asset: invalid credential; continue downstream.
+8. Forged AI-related EXIF: weak unverified metadata only.

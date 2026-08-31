@@ -47,6 +47,7 @@ def _signal(*, kind: str, provider: str, status: str,
 
 def _local_c2pa_signal(c2pa: dict[str, Any]) -> dict[str, Any]:
     ai_claim = source_has(c2pa, AI_SOURCE_TYPES)
+    validation_state = c2pa.get("validation_state")
     if c2pa.get("status") in {"error", "unavailable", "not_checked"}:
         status = str(c2pa.get("status"))
         present: bool | None = None
@@ -67,57 +68,10 @@ def _local_c2pa_signal(c2pa: dict[str, Any]) -> dict[str, Any]:
         ai_claim=ai_claim,
         source=(_matching_source(c2pa, AI_SOURCE_TYPES) if ai_claim else
                 (c2pa.get("history") or {}).get("origin_type")),
-        verification_basis="c2pa_trust" if c2pa.get("verified") else None,
-        details={"validation_state": c2pa.get("validation_state")},
+        verification_basis=("c2pa_trust" if validation_state == "trusted" else
+                            "c2pa_validity" if c2pa.get("verified") else None),
+        details={"validation_state": validation_state},
     )
-
-
-def _openai_signals(openai_result: dict[str, Any]) -> list[dict[str, Any]]:
-    if not openai_result.get("checked"):
-        return [_signal(
-            kind="provider_check",
-            provider="openai",
-            status=str(openai_result.get("status") or "not_checked"),
-            present=None,
-            verified=False,
-            ai_claim=False,
-            source=None,
-            details={"error": openai_result.get("error")},
-        )]
-
-    signals: list[dict[str, Any]] = []
-    for result in openai_result.get("results") or []:
-        signal_type = str(result.get("type") or "unknown").lower()
-        detected = result.get("outcome") == "detected"
-        validation_state = result.get("validation_state")
-        is_watermark = signal_type == "synthid"
-        verified = bool(detected and (is_watermark or validation_state == "trusted"))
-        status = "verified" if verified else "detected" if detected else "not_detected"
-        signals.append(_signal(
-            kind="watermark" if is_watermark else "content_credential",
-            provider="openai",
-            status=status,
-            present=detected,
-            verified=verified,
-            ai_claim=detected,
-            source=result.get("model") or result.get("issuer") or
-                   ("OpenAI" if detected else None),
-            verification_basis="provider_api" if is_watermark and detected else
-                               "c2pa_trust" if verified else None,
-            details={
-                "signal_type": signal_type,
-                "validation_state": validation_state,
-                "issuer": result.get("issuer"),
-                "model": result.get("model"),
-                "generated_at": result.get("generated_at"),
-            },
-        ))
-    if not signals:
-        signals.append(_signal(
-            kind="provider_check", provider="openai", status="not_detected",
-            present=False, verified=False, ai_claim=False, source=None,
-        ))
-    return signals
 
 
 def _metadata_signal(metadata: dict[str, Any]) -> dict[str, Any]:
@@ -139,10 +93,9 @@ def _metadata_signal(metadata: dict[str, Any]) -> dict[str, Any]:
     )
 
 
-def aggregate_signals(c2pa: dict[str, Any], metadata: dict[str, Any],
-                      openai_result: dict[str, Any]) -> list[dict[str, Any]]:
-    return [_local_c2pa_signal(c2pa), *_openai_signals(openai_result),
-            _metadata_signal(metadata)]
+def aggregate_signals(c2pa: dict[str, Any],
+                      metadata: dict[str, Any]) -> list[dict[str, Any]]:
+    return [_local_c2pa_signal(c2pa), _metadata_signal(metadata)]
 
 
 def has_verified_ai_signal(signals: list[dict[str, Any]]) -> bool:

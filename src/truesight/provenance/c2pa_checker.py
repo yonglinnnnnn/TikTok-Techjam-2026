@@ -213,11 +213,11 @@ def check_c2pa(image_path: str | Path) -> dict[str, Any]:
             manifest = (store.get("manifests") or {}).get(label, {})
             state = reader.get_validation_state()
             state_text = str(getattr(state, "value", state)).lower()
-            # "Valid" has no validation errors but an untrusted signer. Only the
-            # SDK's "Trusted" state satisfies this pipeline's verified policy.
+            # Preserve validity as evidence that the credential is intact, but
+            # reserve verification for identities anchored in the SDK trust store.
             status = "not_present" if not label else state_text
             result.update(checked=True, status=status, present=bool(label),
-                verified=state_text == "trusted",
+                verified=state_text=="trusted",
                 active_manifest=label,
                 validation_state=state_text,
                 validation_results=reader.get_validation_results(),

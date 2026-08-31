@@ -9,7 +9,6 @@ from .forensics import analyze_blind_forensics
 from .c2pa_checker import check_c2pa
 from .file_inspector import inspect_file
 from .metadata_checker import check_metadata
-from .openai_checker import check_openai_provenance
 from .scoring import score_signals
 from .signals import (aggregate_signals, best_ai_source, has_verified_ai_signal,
                       has_verified_capture_signal, watermark_detection)
@@ -48,7 +47,6 @@ def analyze_tier1(image_path: str | Path,
                   run_forensics: bool = True,
                   debug_forensics: bool = False,
                   debug_provenance: bool = False,
-                  run_openai_check: bool = True,
                   calibration_path: str | Path | None = None) -> dict[str, Any]:
     start = time.perf_counter()
     path = Path(image_path)
@@ -56,23 +54,21 @@ def analyze_tier1(image_path: str | Path,
         raise FileNotFoundError(f"Image does not exist: {path}")
     file_info = inspect_file(path)
     c2pa, metadata = check_c2pa(path), check_metadata(path)
-    openai_result = (check_openai_provenance(path) if run_openai_check else
-                     {"checked": False, "status": "not_checked", "present": None,
-                      "verified": False, "source": None, "results": [],
-                      "error": None})
     forensics = (analyze_blind_forensics(path, output_dir, debug_forensics)
                  if run_forensics else None)
     signals, severity = score_signals(
-        aggregate_signals(c2pa, metadata, openai_result), calibration_path)
+        aggregate_signals(c2pa, metadata), calibration_path)
     verified_ai = has_verified_ai_signal(signals)
     verified_capture = has_verified_capture_signal(signals, c2pa)
     provenance_verified = any(signal["verified"] for signal in signals)
     source = best_ai_source(signals) or (
         (c2pa.get("history") or {}).get("origin_type") if verified_capture else None)
     evidence = _evidence(signals, verified_capture)
+    provenance_detected = any(signal["present"] is True for signal in signals)
     status = "verified_ai" if verified_ai else "verified_capture" if verified_capture else (
         "ai_indicated" if severity["score"] > 0 else
         "invalid" if any(signal["status"] == "invalid" for signal in signals) else
+        "detected" if provenance_detected else
         "no_provenance_found")
     if forensics and forensics["candidate_regions"]:
         evidence.append("deterministic forensics produced candidate regions for downstream review")
@@ -87,13 +83,15 @@ def analyze_tier1(image_path: str | Path,
                 "trusted digital-capture claim found; downstream analysis still required" if verified_capture else
                 "provenance signals are suggestive but unverified" if severity["score"] > 0 else
                 "a content credential is present but invalid" if status == "invalid" else
+                "a verified content credential was found, but it has no supported AI or capture claim" if status == "detected" and provenance_verified else
+                "a provenance signal was detected but is not verified" if status == "detected" else
                 "no supported provenance signal found; this does not establish authenticity"),
             "signals": signals, "file": file_info,
-            "c2pa": _public_c2pa(c2pa), "openai": openai_result,
-            "metadata": _public_metadata(metadata)},
+            "c2pa": _public_c2pa(c2pa), "metadata": _public_metadata(metadata)},
         "forensics": forensics,
         "evidence": evidence, "latency_ms": round((time.perf_counter()-start)*1000),
         "tier1": {"watermark_detected": watermark_detection(signals),
+                  "provenance_detected": provenance_detected,
                   "provenance_verified": provenance_verified,
                   "verified_ai_signal": verified_ai,
                   "verified_capture_signal": verified_capture,
@@ -101,8 +99,8 @@ def analyze_tier1(image_path: str | Path,
                   "severity_calibration": severity,
                   "forensic_integrity_weight": (forensics["integrity_risk_weight"]
                                                   if forensics else 0.0),
-                  # Only a verified AI-attributed credential/watermark may use
-                  # the fast path. Verified capture remains supporting evidence.
+                  # Only a trusted AI-attributed C2PA credential may use the fast
+                  # path. Verified capture remains supporting evidence.
                   "requires_tier2": not verified_ai},
         "tier2": None, "tier3": None, "fusion": None}
 
@@ -121,13 +119,11 @@ def main() -> None:
     parser.add_argument("--skip-forensics", action="store_true")
     parser.add_argument("--debug-forensics", action="store_true")
     parser.add_argument("--debug-provenance", action="store_true")
-    parser.add_argument("--skip-openai-provenance", action="store_true")
     parser.add_argument("--calibration")
     args = parser.parse_args()
     print(json.dumps(analyze_tier1(args.image, args.output_dir,
                                    not args.skip_forensics, args.debug_forensics,
                                    args.debug_provenance,
-                                   not args.skip_openai_provenance,
                                    args.calibration),
                      indent=2, default=str))
 
