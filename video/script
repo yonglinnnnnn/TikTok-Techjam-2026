@@ -1,0 +1,179 @@
+Intro — AI vs Real
+
+[Two images appear]
+
+“Take a look at these two images. One is real, and one is AI-generated.
+
+Can you tell which is which?
+
+It’s getting harder, isn’t it?
+
+That’s why, over the last 72 hours, we built TrueSight — a multi-tiered system for detecting AI-generated and manipulated media, while also verifying where that media came from.”
+
+[Transition into TrueSight logo]
+
+“And instead of trusting a single AI detector, TrueSight combines cryptographic provenance, digital forensics, semantic reasoning, and deep learning.”
+
+The three-tier architecture
+
+[Three-tier pipeline animates in]
+
+“Here’s what makes TrueSight different.
+
+Running a large neural network on every image is expensive — and often unnecessary.
+
+So TrueSight uses a progressive, three-tier architecture.
+
+Tier One checks cryptographic provenance.
+
+Tier Two performs deterministic forensic analysis, combined with a Vision Language Model.
+
+And only when necessary, Tier Three uses a custom-tuned ConvNeXt model to detect subtle traces of AI generation.
+
+The image only moves deeper into the pipeline when the earlier evidence isn’t enough.
+
+Let’s see that in practice.”
+
+Tier 1 — C2PA provenance
+
+[C2PA diagram / first product demo]
+
+“First, we upload an image to TrueSight.
+
+Before asking any AI model whether this image is fake, we ask a much simpler question:
+
+Can we verify where it came from?
+
+TrueSight extracts its C2PA credentials and cryptographically verifies the associated provenance information.
+
+If those credentials are valid, we can identify things like the declared origin of the media, the provider that signed it, and its recorded editing history.
+
+This gives us a deterministic path to a conclusion — fast, verifiable, and with almost no expensive inference.”
+
+[Metadata missing → Tier 2]
+
+“But there’s a problem.
+
+Metadata can be stripped.
+
+And when that happens, TrueSight doesn’t give up. It moves to Tier Two.”
+
+Tier 2 — Blind forensics
+
+[Image → ELA / High-pass / ORB → mask diagram]
+
+“Now we stop asking what the file claims to be, and start examining the pixels themselves.
+
+TrueSight combines several independent forensic signals.
+
+Error Level Analysis looks for inconsistent JPEG recompression.
+
+High-pass filtering exposes abnormal local noise patterns.
+
+And ORB feature matching searches for duplicated regions that can reveal copy-move manipulation.
+
+Rather than relying on any one test, we fuse these signals to generate a deterministic spatial mask.
+
+In other words, we don’t just say that something looks suspicious.
+
+We identify where the suspicious region is.”
+
+VLM — semantic reasoning
+
+[Mask → VLM → semantic analysis]
+
+“But mathematical anomalies don’t necessarily tell us why something is wrong.
+
+That’s where the second half of Tier Two comes in.
+
+We pass the suspicious regions identified by our forensic pipeline to a Vision Language Model.
+
+Think of it as an automated forensic analyst.
+
+Instead of blindly examining the entire image, it can focus on the regions our deterministic analysis has already flagged and look for semantic inconsistencies — impossible lighting, anatomical distortions, unnatural textures, or objects that simply don’t make physical sense.
+
+The forensic algorithms tell us where to look.
+
+The VLM helps explain what might be wrong there.”
+
+Tier 3 — ConvNeXt
+
+[Image → Feature Extraction → ConvNeXt → probability]
+
+“But modern generative models can produce images with clean metadata, consistent lighting, and almost no obvious manipulation artifacts.
+
+That’s when TrueSight escalates to Tier Three.
+
+Here, we use a custom-tuned ConvNeXt neural network trained to distinguish real imagery from AI-generated content.
+
+Rather than searching for an obvious edit, ConvNeXt learns high-dimensional visual features — including subtle texture and frequency patterns associated with diffusion models and GANs.
+
+And because this is the most computationally expensive stage, we only invoke it when the earlier tiers can’t give us sufficient evidence.”
+
+Grad-CAM — explainability
+
+[ConvNeXt → Grad-CAM heatmap]
+
+“But a probability alone isn’t enough.
+
+If a neural network says an image is AI-generated, we want to know why.
+
+So TrueSight uses Grad-CAM — Gradient-weighted Class Activation Mapping.
+
+Grad-CAM traces the model’s decision back through the network and produces a heatmap showing which regions contributed most strongly to its classification.
+
+That turns an otherwise opaque neural-network prediction into evidence that a human reviewer can actually inspect.”
+
+Late fusion
+
+[Three signals → fusion → verdict]
+
+“At this point, TrueSight may have several very different kinds of evidence.
+
+Cryptographic provenance.
+
+Deterministic forensic signals and semantic analysis.
+
+And a learned ConvNeXt probability.
+
+Our late-fusion layer combines these signals into a calibrated final decision, while preserving the evidence that produced it.
+
+That distinction matters.
+
+TrueSight isn’t designed to answer only ‘AI or not AI?’
+
+It’s designed to answer:
+
+‘What does the evidence actually tell us about this image?’”
+
+Product / results
+
+[Actual TrueSight portal]
+
+“And this is what that analysis looks like in TrueSight.”
+
+[Let the demo breathe here — don't narrate every click.]
+
+“With one upload, the user receives a final verdict and confidence score, an estimated source, the provenance conclusion, the verified provider and signal type, the C2PA origin and declared editing timeline, and the underlying evidence used to reach the decision.”
+
+[Move through evidence panel]
+
+“For deeper inspection, TrueSight also exposes a human forensic review panel…”
+
+[Show forensic output]
+
+“…and when our neural detector is involved, the corresponding Grad-CAM heatmap.”
+
+Ending
+
+[Return to TrueSight branding]
+
+“Synthetic media is only going to become harder to recognize.
+
+So we believe detection can’t depend on a single model or a single signal.
+
+By combining cryptographic provenance, deterministic forensics, semantic reasoning, and deep learning, TrueSight provides a scalable and explainable way to understand what’s real, what’s synthetic, and — most importantly — why.
+
+This is TrueSight.
+
+Know what’s real.”
