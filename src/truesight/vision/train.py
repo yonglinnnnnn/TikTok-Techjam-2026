@@ -162,6 +162,14 @@ def train(config: Config, train_manifest: str, val_manifest: str, output_dir: st
             parameter.requires_grad = False
 
     report = model.freeze_report()
+    
+    optimizer = AdamW(
+        [
+            {"params": backbone_parameters, "lr": config.training.backbone_lr},
+            {"params": head_parameters, "lr": config.training.head_lr},
+        ],
+        weight_decay=config.training.weight_decay,
+    )
 
     optimizer_parameter_ids = {
         id(parameter)
@@ -194,13 +202,6 @@ def train(config: Config, train_manifest: str, val_manifest: str, output_dir: st
         f"/ {report.total_parameters:,} ({100 * report.trainable_ratio:.2f}%)"
     )
 
-    optimizer = AdamW(
-        [
-            {"params": backbone_parameters, "lr": config.training.backbone_lr},
-            {"params": head_parameters, "lr": config.training.head_lr},
-        ],
-        weight_decay=config.training.weight_decay,
-    )
     scheduler = CosineAnnealingLR(
         optimizer,
         T_max=max(config.training.epochs, 1),
