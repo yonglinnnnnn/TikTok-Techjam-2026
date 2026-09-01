@@ -170,6 +170,14 @@ def train(config: Config, train_manifest: str, val_manifest: str, output_dir: st
     )
 
     report = model.freeze_report()
+    
+    optimizer = AdamW(
+        [
+            {"params": backbone_parameters, "lr": config.training.backbone_lr},
+            {"params": head_parameters, "lr": config.training.head_lr},
+        ],
+        weight_decay=config.training.weight_decay,
+    )
 
     optimizer_parameter_ids = {
         id(parameter)
