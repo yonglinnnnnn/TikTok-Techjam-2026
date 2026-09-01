@@ -63,17 +63,16 @@ Validation set:
 4,000 images total
 ~~~~
 
-| Condition | Images | Accuracy | Balanced accuracy | F1 | ROC-AUC | Status |
-|---|---:|---:|---:|---:|---:|---|
-| Clean CIFAKE validation | 4,000 | 95.475% | 95.475% | 95.449% | approximately 99.20% | Measured |
-| JPEG | 4,000 | Pending | Pending | Pending | Pending | Run required |
-| Blur | 4,000 | Pending | Pending | Pending | Pending | Run required |
-| Resize | 4,000 | Pending | Pending | Pending | Pending | Run required |
-| Noise | 4,000 | Pending | Pending | Pending | Pending | Run required |
-| Color adjustment | 4,000 | Pending | Pending | Pending | Pending | Run required |
-| Center crop | 4,000 | Pending | Pending | Pending | Pending | Run required |
+| Condition | Images | Balanced accuracy (%)| F1 (%)| ROC-AUC (%)|
+|---|---:|---:|---:|---|
+| Clean CIFAKE validation | 4,000 | 95.47 | 95.44 | approximately 99.20 |
+| JPEG | 4,000 | 90.10 | 89.32 | 97.82 |
+| Blur | 4,000 | 62.30 | 39.53 | 93.65 |
+| Resize | 4,000 | 68.57 | 56.82 | 84.58 |
+| Noise | 4,000 | 84.75 | 85.96 | 94.27 |
+| Color adjustment | 4,000 | 89.48 | 91.32 | 97.86 |
+| Center crop | 4,000 | 89.90 | 89.02 | 98.03 |
 
-Do not replace Pending with estimated values. The transformed rows must be measured.
 
 ## Interpretation
 
