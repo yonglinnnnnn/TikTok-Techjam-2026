@@ -1,202 +1,505 @@
-# TrueSight - Member 1: ConvNeXt Vision Engine
+# TrueSight — ConvNeXt Vision Engine
 
-This module is the **computer-vision / deep-learning component** of TrueSight for the TikTok TechJam 2026 problem **Robust Detection of AI-Generated Images Under Real-World Transformations**.
+This module detects whether an image is likely to be:
 
-It intentionally implements **only Member 1's scope**:
+- authentic / real; or
+- AI-generated or AI-manipulated.
 
-- ConvNeXt-Tiny transfer learning
-- Robust image augmentation with Albumentations
-- staged fine-tuning / selective unfreezing
-- optional two-view consistency regularisation
-- class-imbalance handling
-- mixed-precision training when supported
-- validation metrics and checkpointing
-- single-image / directory inference
-- Grad-CAM heatmaps
-- typed integration contracts for future Member 2/3 outputs, without implementing those modules
+It is designed for the TikTok TechJam challenge:
 
-The official problem statement requires image-level AIGC detection, robustness to JPEG compression, blur, resize, noise, color adjustment and cropping, and models under 2B parameters. The proposed backbone is ConvNeXt-Tiny, which is far below that limit. The problem statement also explicitly identifies ConvNeXt, Albumentations-style transformations and Grad-CAM as appropriate directions for this track. See the source material in the repository / challenge brief.
+> Robust Detection of AI-Generated Images Under Real-World Transformations
 
-## Why Python modules instead of a single notebook?
+The model focuses on visual evidence from image pixels. It does not depend on C2PA metadata, watermarks, provenance APIs, or VLM outputs. Those signals can be combined later by Member 4 through the project fusion layer.
 
-Use Python modules for the shared implementation and optionally use a notebook only for experiments. This avoids merge conflicts between five team members and lets Member 4 import the model directly into the end-to-end pipeline.
+---
 
-Recommended workflow:
+## 1. Responsibilities
 
-```text
-Member 5 dataset manifests
-          |
-          v
-Member 1 train.py --> best.pt --> Member 4 pipeline
-          |
-          +--> predict.py --> image_path + pred JSON
-          |
-          +--> Grad-CAM --> heatmap PNG
+Member 1 implements:
 
-Member 2 provenance ------------------+
-                                      |
-Member 3 VLM -------------------------+--> Member 4 fusion/orchestration
-```
+- ConvNeXt-Tiny transfer learning;
+- binary real-versus-AI classification;
+- selective ConvNeXt fine-tuning;
+- robustness-oriented image augmentation;
+- optional consistency training;
+- validation metrics;
+- model checkpointing;
+- batch image prediction;
+- Grad-CAM explanations;
+- a clean interface for Member 4.
 
-## Dataset contract
+Member 1 does not implement:
 
-Member 1 does **not** hard-code the supplied datasets. Member 5 should prepare a manifest with at least:
+- the Streamlit or Gradio interface;
+- C2PA verification;
+- SynthID or watermark detection;
+- OpenAI, Gemini, or Anthropic VLM analysis;
+- final score fusion;
+- final WildFake benchmarking;
+- platform-wide moderation logic.
 
-```csv
-image_path,label,source,split
-/path/to/img001.jpg,0,COCO,train
-/path/to/img002.jpg,1,CIFAKE,train
-```
+The model produces an independent visual probability:
 
-Labels:
+    P(AIGC | image)
 
-- `0` = authentic / real
-- `1` = AI-generated
+where:
 
-For the official demonstration benchmark, the WildFake subset must remain validation-only and must never enter the training manifest. The challenge brief explicitly states that the WildFake subset is for demonstration/reference validation and must not be used during training.
+- 0.0 = model considers the image likely authentic
+- 1.0 = model considers the image likely AI-generated
 
-## Install
+This value is a model score, not a guaranteed probability of authorship.
+
+## 2. Why ConvNeXt-Tiny?
+
+ConvNeXt is a modern convolutional neural network designed to achieve strong image-recognition performance while retaining the practical advantages of convolutional models.
+
+ConvNeXt-Tiny is suitable for this hackathon because:
+
+- it is substantially below the two-billion-parameter limit;
+- it has publicly available ImageNet pretrained weights;
+- it provides strong visual features without training from scratch;
+- it can be fine-tuned on limited hackathon hardware;
+- it is suitable for image-level classification;
+- its convolutional feature maps can be used for Grad-CAM explanations.
+
+The original TorchVision ConvNeXt-Tiny contains approximately 28.6 million parameters. After replacing the 1,000-class ImageNet classifier with a one-logit binary classifier, this project uses approximately 27.8 million parameters.
+
+The model is therefore small enough for a practical prototype while still providing a strong visual backbone.
+
+## 3. Model architecture
+
+The model performs the following operation:
+
+    RGB image
+        ↓
+    Resize and crop
+        ↓
+    Optional robustness transformation
+        ↓
+    ImageNet normalization
+        ↓
+    Pretrained ConvNeXt-Tiny backbone
+        ↓
+    Global feature representation
+        ↓
+    Dropout
+        ↓
+    Linear layer with one output logit
+        ↓
+    Sigmoid
+        ↓
+    P(AIGC)
+
+The classifier output is one logit rather than two class logits:
+
+    logit = model(image)
+    pred = sigmoid(logit)
+
+The project uses the following binary labels:
+
+- 0 = real/authentic
+- 1 = AI-generated or AI-manipulated
+
+## 4. Transfer learning strategy
+
+Training the entire ConvNeXt model from random initialization would require substantially more data and compute.
+Instead, this project starts with ImageNet pretrained weights.
+The training process has two stages.
+
+### Stage A: classifier warm-up
+During the warm-up period:
+
+- ConvNeXt feature extractor: frozen
+- Binary classifier head: trainable
+
+This allows the new classifier to quickly adapt to the real-versus-AI task without immediately changing the pretrained visual representation.
+
+### Stage B: selective fine-tuning
+After warm-up, the last selected ConvNeXt stages are unfrozen.
+The configuration controls this:
+
+    model:
+      unfreeze_stages: 2
+
+The supported values are:
+- 0 = classifier only
+- 1 = last ConvNeXt stage
+- 2 = last two ConvNeXt stages
+- 3 = last three ConvNeXt stages
+- 4 = all four ConvNeXt stages
+
+The recommended starting value is:
+    
+    unfreeze_stages: 2
+
+The selected backbone stages use a smaller learning rate than the new classifier head:
+
+    training:
+      backbone_lr: 0.00001
+      head_lr: 0.0002
+
+This protects useful pretrained features while allowing the classifier to adapt more quickly.
+
+### Trainable-parameter interpretation
+During warm-up, a run may print approximately:
+    
+    trainable = 2,305
+
+This means only the binary classifier is currently trainable.
+
+After warm-up, with `unfreeze_stages: 2`, approximately 25 million parameters become trainable. This is expected and confirms that the last two ConvNeXt stages have been enabled.
+
+## 5. Robustness objective
+
+The challenge requires models to remain useful after realistic image redistribution operations, including:
+
+- JPEG compression;
+- Gaussian blur;
+- resizing and upscaling;
+- Gaussian noise;
+- brightness and color changes;
+- center cropping.
+
+A detector trained only on pristine images may learn fragile details that disappear after an image is uploaded to a social-media platform.
+This project therefore exposes the model to controlled transformations during training.
+
+The objective is:
+- clean or normally transformed image → correct label
+- realistically degraded image → same correct label
+
+The model should learn evidence that remains useful after ordinary reposting and processing.
+
+## 6. Augmentation pipeline
+
+Augmentations are implemented in:
+`src/truesight/vision/augmentations.py`
+
+The current pipeline uses Albumentations 2.x.
+The main transformations are:
+
+| Transformation | Configuration | Real-world interpretation |
+| --- | --- | --- |
+| JPEG compression | quality 30–90 | Social-media or messaging re-encoding |
+| Gaussian blur | sigma 0.5–2.0 | Out-of-focus or processing blur |
+| Downscale/upscale | 0.25–0.5 scale | Thumbnail or low-resolution repost |
+| Gaussian noise | standard deviation 0.02–0.10 | Transmission or sensor noise |
+| Color jitter | approximately ±20% | Filters and auto-enhancement |
+| Center crop | approximately 80% | Profile-picture or reframing crop |
+| Horizontal flip | configurable | Natural image variation |
+
+The corruption pipeline does not apply every severe transformation simultaneously. Instead, one corruption family is selected with a configured probability. This prevents the training images from becoming unrealistically damaged.
+
+Example configuration:
+    
+    augmentation:
+      enabled: true
+      jpeg_quality: [30, 90]
+      blur_sigma: [0.5, 2.0]
+      downscale: [0.25, 0.5]
+      noise_std: [0.02, 0.10]
+      color_jitter: [0.8, 1.2]
+      crop_scale: [0.8, 1.0]
+
+The training-time pipeline and the validation-time pipeline are intentionally different:
+
+- **Training:** random crop + optional robustness transformations
+- **Validation:** deterministic resize + center crop + normalization
+
+This prevents random augmentation from contaminating validation measurements.
+
+## 7. Consistency training
+
+The project optionally trains using two views of the same image:
+
+    Original image
+        ├── normal view
+        └── transformed view
+
+The model produces:
+- `prediction_original`
+- `prediction_transformed`
+
+The training objective is conceptually:
+
+    loss =
+        BCE(original, label)
+        + BCE(transformed, label)
+        + lambda × consistency_loss
+
+The consistency loss penalizes large differences between the two predictions.
+For example:
+- Original image: P(AI) = 0.92
+- Compressed image: P(AI) = 0.88
+These predictions are reasonably consistent.
+
+However:
+- Original image: P(AI) = 0.92
+- Compressed image: P(AI) = 0.31
+indicates that the model may be relying on fragile visual evidence.
+
+Consistency training encourages the prediction to remain stable when the image undergoes realistic redistribution transformations. It does not identify exact generated pixels and should not be described as image segmentation.
+
+Configuration:
+    
+    training:
+      consistency_weight: 0.05
+      use_consistency_view: true
+
+Begin with:
+    
+    consistency_weight: 0.0
+    use_consistency_view: false
+
+Then compare against:
+    
+    consistency_weight: 0.02
+    use_consistency_view: true
+and:
+    
+    consistency_weight: 0.05
+    use_consistency_view: true
+
+Consistency training requires an additional model forward pass and may increase training time.
+
+## 8. Project structure
+
+    truesight_member1/
+    │
+    ├── configs/
+    │   └── model/
+    │       └── convnext_tiny.yaml
+    │
+    ├── scripts/
+    │   ├── data/
+    │   │   ├── download_datasets.py
+    │   │   └── make_experiment_manifests.py
+    │   │
+    │   └── convnext/
+    │       ├── train.py
+    │       ├── predict.py
+    │       ├── gradcam.py
+    │       └── tune.py
+    │
+    ├── src/
+    │   └── truesight/
+    │       └── vision/
+    │           ├── model.py
+    │           ├── dataset.py
+    │           ├── augmentations.py
+    │           ├── train.py
+    │           ├── inference.py
+    │           ├── gradcam.py
+    │           ├── losses.py
+    │           ├── metrics.py
+    │           ├── checkpoint.py
+    │           ├── config.py
+    │           └── integration_contract.py
+    │
+    ├── data/
+    │   ├── raw/
+    │   └── processed/
+    │
+    ├── outputs/
+    │   └── member1/
+    │
+    ├── models/
+    │   └── ConvNext/
+    │
+    ├── docs/
+    ├── tests/
+    ├── requirements.txt
+    └── README_MEMBER1.md
+
+Raw datasets, generated manifests, checkpoints, predictions, and heatmaps should not normally be committed directly to GitHub.
+
+## 9. Dataset contract
+
+Member 1 consumes CSV manifests.
+Minimum required columns:
+
+    image_path,label,source,split
+    data/image001.jpg,0,CIFAKE,train
+    data/image002.jpg,1,CIFAKE,train
+
+Required labels:
+- 0 = real/authentic
+- 1 = AI-generated or AI-manipulated
+
+The dataset loader converts each image into:
+
+    RGB image
+        ↓
+    NumPy array
+        ↓
+    Albumentations transformation
+        ↓
+    PyTorch tensor
+        ↓
+    ConvNeXt-Tiny
+
+The model code does not hard-code CIFAKE or SID-Set. This allows the team to change datasets without rewriting the neural-network implementation.
+WildFake must remain validation-only and must not appear in training manifests.
+
+## 10. Installation
 
 From the repository root:
 
-```bash
-pip install -r requirements.txt
-```
+    python -m venv .venv
+    .venv\Scripts\Activate.ps1
+    python -m pip install --upgrade pip
+    python -m pip install -r requirements.txt
 
-For a CUDA Colab runtime, install the matching PyTorch build first if necessary, then install the remaining dependencies.
+Set the source path for the current PowerShell session:
+    
+    $env:PYTHONPATH = "$((Get-Location).Path)\src;$env:PYTHONPATH"
 
-## Quick start
+Verify the model package:
+    
+    python -c "from truesight.vision.model import ConvNeXtAIGCDetector; print('Member 1 import successful')"
 
-```bash
-python scripts/ConvNext/train.py \
-  --manifest data/processed/train_manifest.csv \
-  --val-manifest data/processed/val_manifest.csv \
-  --output-dir outputs/member1/convnext_tiny
-```
+## 11. Training
 
-Then:
+Example baseline:
+    
+    python -u scripts\convnext\train.py `
+        --config configs\model\convnext_tiny.yaml `
+        --manifest data\processed\train_manifest.csv `
+        --val-manifest data\processed\val_manifest.csv `
+        --output-dir outputs\member1\convnext_tiny
 
-```bash
-python scripts/ConvNext/predict.py \
-  --checkpoint outputs/member1/convnext_tiny/best.pt \
-  --input-dir data/samples \
-  --output-json outputs/member1/predictions.json
-```
+The output directory contains:
+- `best.pt`
+- `last.pt`
+- `config.json`
+- `training_history.json`
 
-Generate a heatmap:
+`best.pt` is the checkpoint with the best validation balanced accuracy.
 
-```bash
-python scripts/ConvNext/gradcam.py \
-  --checkpoint outputs/member1/convnext_tiny/best.pt \
-  --image data/samples/example.jpg \
-  --output outputs/member1/heatmaps/example.png
-```
+Example experiment:
+    
+    python -u scripts\convnext\train.py `
+        --config configs\model\convnext_tiny.yaml `
+        --manifest data\processed\train_manifest_small.csv `
+        --val-manifest data\processed\val_manifest_small.csv `
+        --output-dir outputs\member1\exp02_unfreeze2
 
-## Training strategy
+Never overwrite previous experiment directories. Use separate folders for each configuration.
 
-### Stage A - classifier warm-up
+## 12. Evaluation metrics
 
-Freeze the ConvNeXt feature extractor and train only the binary classifier head. This quickly adapts the ImageNet representation to the real-vs-AIGC task without destroying useful pretrained features.
+The validation process records:
+- accuracy;
+- balanced accuracy;
+- precision;
+- recall;
+- F1-score;
+- ROC-AUC;
+- average precision;
+- validation loss;
+- false positives;
+- false negatives;
+- training time;
+- learning rates.
 
-### Stage B - selective fine-tuning
+Balanced accuracy is used for checkpoint selection because a raw accuracy score can hide poor performance on an imbalanced validation set. For balanced CIFAKE validation data, accuracy and balanced accuracy may be identical.
 
-Unfreeze the last 1-3 ConvNeXt stages and continue training with a smaller learning rate. The default is **2 stages**. This is the main transfer-learning parameter to tune.
+A proper evaluation should use a complete validation manifest rather than judging the model from a few manually selected images.
 
-### Stage C - robustness-aware training
+## 13. Prediction interface
 
-The training loader can produce:
+The batch prediction script accepts an image directory and writes JSON:
 
-1. a standard training view, and
-2. a strongly transformed view of the same image.
+    python -u scripts\convnext\predict.py `
+        --checkpoint outputs\member1\exp02_unfreeze2\best.pt `
+        --input-dir data\test `
+        --output-json outputs\member1\predictions.json
 
-The supervised loss is applied to both views. An optional consistency term encourages the model to give similar probabilities to the two views:
+Example output:
+    
+    [
+      {
+        "image_path": "data/test/example.jpg",
+        "pred": 0.892
+      }
+    ]
 
-```text
-L = L_BCE(clean) + L_BCE(transformed) + lambda * L_consistency
-```
+Interpretation:
+- pred near 0.0 = likely real
+- pred near 1.0 = likely AI-generated
 
-This is deliberately kept optional because it costs approximately another forward pass and should only be enabled if validation results justify the extra compute.
+The threshold used by the UI should be configurable. A default threshold of 0.5 is acceptable for initial testing, but the final threshold should be selected using held-out validation data.
 
-## Robustness transformations
+## 14. Grad-CAM
 
-The default Albumentations pipeline covers the transformations listed by the challenge:
+Grad-CAM generates a visual explanation of the ConvNeXt decision. It highlights image regions that contributed strongly to the AI-generation score.
 
-| Transformation | Default training range | Real-world motivation |
-|---|---:|---|
-| JPEG | quality 30-90 | social-media re-encoding |
-| Gaussian blur | sigma 0.5-2.0 | focus / resampling blur |
-| Downscale | 0.25x-0.5x | thumbnail / low-resolution repost |
-| Gaussian noise | sigma 0.02-0.10 | sensor / transmission noise |
-| Color jitter | brightness/contrast/saturation 0.8-1.2 | filters / auto-enhancement |
-| Center crop | 80% | profile-picture / framing changes |
+Run:
+    
+    python -u scripts\convnext\gradcam.py `
+        --checkpoint outputs\member1\exp02_unfreeze2\best.pt `
+        --image data\test\example.jpg `
+        --output outputs\member1\heatmaps\example.png
 
-Not every transform is applied on every image. Probabilities are configurable so the model still sees enough clean evidence to learn the underlying AIGC signal.
+Grad-CAM should be described to judges as:
+*A model-evidence heatmap showing regions that contributed to the classifier's AI-generation prediction.*
 
-## Parameter tuning priority
+Do not describe it as:
+- the exact percentage of the image generated by AI;
+- a pixel-level segmentation mask;
+- proof that every highlighted region is synthetic.
 
-Do **not** brute-force a large grid during the hackathon. Use a small, staged search:
+Grad-CAM explains the classifier. It does not establish ground-truth manipulation boundaries.
 
-1. `unfreeze_stages`: `[1, 2, 3]`
-2. head learning rate: `1e-4` to `5e-4`
-3. backbone learning rate: `1e-6` to `5e-5`
-4. image size: `224` vs `256`
-5. augmentation probability / strength
-6. consistency weight: `0.0`, `0.02`, `0.05`, `0.1`
-7. dropout: `0.0` to `0.3`
-8. weight decay: `1e-5` to `1e-3`
+For the UI, use a label such as:
+*Regions influencing the AI prediction*
 
-Recommended method:
+## 15. Recommended experiment sequence
 
-- first run 3-5 cheap experiments with reduced epochs;
-- eliminate clearly bad configurations;
-- run 2-3 focused experiments around the best configuration;
-- retrain the best configuration with full training budget;
-- evaluate on WildFake only after model selection is frozen.
+Use a staged experiment plan.
 
-This avoids overfitting the public validation benchmark through excessive manual tuning.
+- **Experiment 1: clean baseline**
+  - ConvNeXt-Tiny
+  - 224 × 224
+  - pretrained weights
+  - last 1 stage unfrozen
+  - augmentation disabled
+  - consistency disabled
+- **Experiment 2: deeper fine-tuning**
+  - last 2 stages unfrozen
+  - augmentation disabled
+  - consistency disabled
+- **Experiment 3: robustness training**
+  - last 2 stages unfrozen
+  - augmentation enabled
+  - consistency disabled
+- **Experiment 4: consistency training**
+  - last 2 stages unfrozen
+  - augmentation enabled
+  - consistency enabled
+  - consistency weight = 0.02 or 0.05
 
-## Important evaluation discipline
+Compare every experiment using the same validation manifest and report:
+- accuracy
+- balanced accuracy
+- F1
+- ROC-AUC
+- false positives
+- false negatives
+- training time
 
-Do not use WildFake images to tune augmentations, thresholds, or architecture after repeatedly inspecting their results. The challenge says WildFake is a validation/reference dataset and must not be used for training. Treat it as a final external check after the training recipe has been selected.
+The final model should be selected using validation results first, then checked once on the external WildFake reference set.
 
-## Integration contract for Members 2 and 3
+## 16. Limitations
 
-Member 1 outputs only the learned visual signal:
+The model has several important limitations:
+- CIFAKE and SID-Set may contain dataset-specific visual shortcuts;
+- high validation accuracy does not guarantee cross-dataset generalisation;
+- real images with unusual processing may be falsely flagged;
+- AI-generated images that resemble the training distribution may be easier to detect;
+- threshold 0.5 is not automatically optimal;
+- the output is a visual model score, not proof of authorship;
+- Grad-CAM is explanatory rather than pixel-accurate;
+- CPU training can be slow;
+- a model trained only on CIFAKE should not be presented as universally reliable.
 
-```json
-{
-  "image_path": "...",
-  "pred": 0.892
-}
-```
-
-The eventual pipeline may attach additional fields such as provenance or VLM evidence. This repository deliberately does **not** implement or make decisions from those fields.
-
-Suggested future combined object:
-
-```json
-{
-  "image_path": "...",
-  "pred": 0.892,
-  "metadata": {
-    "tier1_provenance": null,
-    "vlm": null,
-    "heatmap_path": "..."
-  }
-}
-```
-
-## What to show judges
-
-For the technical story, Member 1 should be able to demonstrate:
-
-- transfer learning rather than training from scratch;
-- selective unfreezing;
-- robustness augmentation;
-- clean vs transformed evaluation;
-- a reproducible checkpoint;
-- Grad-CAM showing the spatial evidence used by the classifier;
-- a clear latency/accuracy trade-off;
-- failure cases and false positives/negatives.
-
-Avoid claiming that Grad-CAM measures the exact percentage of an image that was generated. It is a visual explanation of the classifier's influential regions, not pixel-level ground truth segmentation.
+A small manually selected folder should not be used as the main evaluation. Use the complete validation manifest and an external dataset whenever possible.
