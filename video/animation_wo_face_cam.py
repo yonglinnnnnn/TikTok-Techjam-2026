@@ -1482,7 +1482,7 @@ class TrueSightPitch(Scene):
         )
 
         verdict_box = RoundedRectangle(
-            width=7,
+            width=6.5,
             height=0.95,
             corner_radius=0.10,
             stroke_color=self.RED_C,
@@ -2036,7 +2036,7 @@ class TrueSightPitch(Scene):
 
         text.arrange(
             DOWN,
-            buff=0.09,x
+            buff=0.09,
         )
 
         text.move_to(box)
