@@ -343,11 +343,65 @@ Train:
 python -u scripts\convnext\train.py --config configs\model\convnext_tiny.yaml --manifest data\processed\train_manifest_small.csv --val-manifest data\processed\val_manifest_small.csv --output-dir outputs\member1\exp02_unfreeze2
 ~~~~
 
-Predict a directory:
+### Run three-tier directory inference
+
+The directory prediction script recursively discovers supported images and
+runs each one through the integrated TrueSight pipeline:
+
+1. Tier 1 provenance, metadata, and blind forensics;
+2. Tier 2 VLM semantic analysis, when an OpenAI or Gemini API key is configured;
+3. Tier 3 ConvNeXt classification; and
+4. fusion into a final AIGC confidence.
+
+Place a trained ConvNeXt checkpoint on disk. To enable Tier 2, add at least one
+provider key to `.env`:
+
+~~~~dotenv
+OPENAI_API_KEY=your_key
+# or
+GEMINI_API_KEY=your_key
+~~~~
+
+Run the predictor from the repository root:
 
 ~~~~powershell
-python -u scripts\convnext\predict.py --checkpoint outputs\member1\exp02_unfreeze2\best.pt --input-dir data\samples --output-json outputs\member1\predictions.json
+python -u scripts\ConvNext\predict.py `
+  --checkpoint outputs\member1\exp02_unfreeze2\best.pt `
+  --input-dir data\samples `
+  --output-json outputs\member1\predictions.json `
+  --device cpu
 ~~~~
+
+`--device` is optional. When omitted, inference uses CUDA if available and CPU
+otherwise. `--image-size` defaults to `224`. Heatmap generation is disabled for
+this batch command to avoid creating extra output artifacts.
+
+The output is a JSON array containing exactly `image_path` and `pred` for every
+successfully processed image:
+
+~~~~json
+[
+  {
+    "image_path": "data/samples/image_1.jpg",
+    "pred": 0.82
+  },
+  {
+    "image_path": "data/samples/image_2.jpg",
+    "pred": 0.17
+  }
+]
+~~~~
+
+`pred` is the fused probability of AIGC content, where `0.0` means likely real
+and `1.0` means likely AI-generated or AI-manipulated. If Tier 1 verifies an AI
+provenance signal, the orchestrator intentionally uses its fast path and skips
+the more expensive later tiers. If no VLM provider key is configured, Tier 2 is
+reported as unavailable and fusion falls back to the available evidence.
+
+The command exits with an error if the checkpoint or input directory is
+missing, no supported images are found, an image cannot be processed, or the
+pipeline cannot produce a final confidence. It does not silently omit failed
+images.
 
 Run the UI:
 

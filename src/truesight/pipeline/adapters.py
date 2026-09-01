@@ -268,6 +268,8 @@ class PipelineComponents:
         run_vlm: bool = True,
         run_forensics: bool = True,
         generate_heatmap: bool = True,
+        image_size: int = 224,
+        device: str | None = None,
     ) -> PipelineComponents:
         """Build the real Member 1-3 connections with optional dependencies."""
         try:
@@ -306,6 +308,8 @@ class PipelineComponents:
                 heatmap_dir=(project_root / "outputs" / "heatmaps")
                 if generate_heatmap
                 else None,
+                image_size=image_size,
+                device=device,
             ),
             normalizer=PassthroughNormalizer(),
         )
